@@ -2,7 +2,6 @@ package main
 
 import "fmt"
 import "strings"
-import "errors"
 import "strconv"
 
 /*
@@ -21,6 +20,14 @@ type Value struct {
 	List   []Value
 }
 
+func (v Value) isSymbol() bool {
+	return v.Symbol != nil
+}
+
+func (v Value) isNumber() bool {
+	return v.Number != nil
+}
+
 func toSexpr(v Value) string {
 	if v.Symbol != nil {
 		return *v.Symbol
@@ -30,7 +37,7 @@ func toSexpr(v Value) string {
 		return "\"" + *v.Str + "\""
 	} else if v.List != nil {
 
-		elements := make([]string, 0)
+		elements := make([]string, 0, len(v.List))
 		for i := range v.List {
 			elements = append(elements, toSexpr(v.List[i]))
 		}
@@ -51,7 +58,7 @@ func tokenize(s string) []string {
 	s = strings.Replace(s, ")", " ) ", -1)
 	parts := strings.Split(s, " ")
 
-	tokens := make([]string, 0)
+	tokens := make([]string, 0, len(parts))
 	for i := range parts {
 		trimmed := strings.TrimSpace(parts[i])
 		if len(trimmed) > 0 {
@@ -70,16 +77,14 @@ func parseAtom(s string) *Value {
 		return &Value{Number: &ival}
 	}
 
-	if len(s) > 1 {
-		if strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
-			i := s[1 : len(s)-1]
-			return &Value{Str: &i}
-		} else {
-			return &Value{Symbol: &s}
-		}
+	if len(s) > 1 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
+		i := s[1 : len(s)-1]
+		return &Value{Str: &i}
+	} else if len(s) > 0 {
+		return &Value{Symbol: &s}
+	} else {
+		return nil
 	}
-
-	return nil
 }
 
 func pop(items *[]string) *string {
@@ -91,12 +96,10 @@ func pop(items *[]string) *string {
 	return &first
 }
 
-func _parse(tokens *[]string) (v *Value, err error) {
-
-	//fmt.Printf("calling parse on tokens: %s\n", *tokens)
+func _parse(tokens *[]string) (v *Value) {
 
 	if len(*tokens) == 0 {
-		return nil, errors.New("no tokens supplied")
+		panic("no tokens supplied")
 	}
 
 	token := pop(tokens)
@@ -106,42 +109,77 @@ func _parse(tokens *[]string) (v *Value, err error) {
 		for {
 			if (*tokens)[0] == ")" {
 				pop(tokens) // dump )
-				return &Value{List: sexpr}, nil
+				return &Value{List: sexpr}
 			} else {
-				v, err := _parse(tokens)
-				if err != nil {
-					return nil, errors.New("not a valid atom: " + *token)
-				} else {
-					sexpr = append(sexpr, *v)
-				}
+				v := _parse(tokens)
+				sexpr = append(sexpr, *v)
 			}
 		}
 	}
 
 	val := parseAtom(*token)
 	if val == nil {
-		return nil, errors.New("not a valid atom: " + *token)
+		panic("not a valid atom: " + *token)
 	}
-	return val, nil
+	return val
 }
 
-func parse(tokens []string) (v *Value, err error) {
+func parse(tokens []string) (v *Value) {
 	stream := make([]string, len(tokens))
 	copy(stream, tokens)
 	return _parse(&stream)
 }
 
-func read(s string) (v *Value, err error) {
+func read(s string) (v *Value) {
 	tokens := tokenize(s)
 	return parse(tokens)
 }
 
-func main() {
-
-	value, err := read("(println \"hello\")")
-	if err != nil {
-		fmt.Println("error: " + err.Error())
-	} else {
-		fmt.Printf("%+v\n", value)
+func builtin_plus(vals []Value) Value {
+	var base int = 0
+	for i := range vals {
+		val := vals[i]
+		if !val.isNumber() {
+			panic("arguments to '+' must be numbers: " + val.String())
+		}
+		base = base + *val.Number
 	}
+	return Value{Number: &base}
+}
+
+// TODO: think this out
+func eval(v Value) Value {
+
+	if v.List == nil {
+		return v
+	}
+
+	// empty lists are just empty lists
+	if len(v.List) == 0 {
+		return v
+	}
+
+	evaluated := make([]Value, 0, len(v.List))
+	for i := range v.List {
+		elem := eval(v.List[i])
+		evaluated = append(evaluated, elem)
+	}
+
+	fn := evaluated[0]
+	args := evaluated[1:]
+
+	if !fn.isSymbol() {
+		panic("function names must be symbols: " + fn.String())
+	}
+
+	if "+" == *fn.Symbol {
+		return builtin_plus(args)
+	}
+
+	panic("function not defined: " + fn.String())
+}
+
+func main() {
+	value := read("(+ 1 2 3)")
+	fmt.Printf("%+v\n", eval(*value))
 }

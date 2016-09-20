@@ -1,8 +1,7 @@
 package goober
 
 import "math"
-
-//import "fmt"
+import "fmt"
 
 type binding struct {
 	Name  string
@@ -147,19 +146,6 @@ func special_if(context *context, vals []Value) Value {
 	}
 }
 
-/* what does the execution context look like?
-probably:
-  - global vars state (this is a pointer, its mutable and everything can see it)
-  - lexical bindings (this should be immutable for a given block of code)
-
-  so we need to pass around this state, and use a function to resolve bindings from it
-
-  we'll need a new Value type for functions. IFn? :)
-*/
-
-// TODO: the `env` map is really the `captured bindings` map. currently it reflects
-// global vars, but it should probably actually be the lexical bindings currently
-// in scope, with a fallback to global vars if nothing else matches.
 func special_fn(vals []Value) Value {
 
 	if len(vals) < 2 {
@@ -186,7 +172,44 @@ func special_fn(vals []Value) Value {
 	return Value{Fn: &Fn{Args: paramNames, Statements: vals[1:]}}
 }
 
+func special_fn_call(name string, fn Fn, context *context, vals []Value) Value {
+
+	if len(vals) < len(fn.Args) {
+		panic(fmt.Sprintf("%v takes %v parameters: %v", name, len(fn.Args), Value{List: vals}.String()))
+	}
+
+	// eval each binding, add it to the context
+
+	for i, bindingName := range fn.Args {
+		bindingExpr := vals[i]
+		//fmt.Printf("bindingName: %v, bindingExpr: %v", bindingName, bindingExpr)
+		bindingValue := eval(context, bindingExpr)
+		context.push(bindingName, bindingValue)
+	}
+
+	// eval the rest of the let arguments
+
+	var result Value
+	for _, expr := range fn.Statements { // TODO: these are not statements, they are expressions
+		result = eval(context, expr)
+		//fmt.Printf("expr: %v, result: %v\n", expr, result)
+	}
+
+	// pop off all the bindings
+
+	for range fn.Args {
+		context.pop() // TODO: these cleanups should happen even if evaulation fails
+	}
+
+	// return the result of the last statement in the fn block
+
+	return result
+}
+
 func builtin_plus(vals []Value) Value {
+
+	//fmt.Printf("plus got: %v\n", vals)
+
 	var base int = 0
 	for i := range vals {
 		val := vals[i]
@@ -258,8 +281,7 @@ func eval(context *context, v Value) Value {
 			panic("symbol is not bound to a function: " + sym)
 		}
 
-		// call fn here
-		// - resolve lexical bindings in elements (perhaps do let first?)
+		return special_fn_call(sym, *resolved.Fn, context, evaluatedArgs)
 	}
 
 	if v.isSymbol() {

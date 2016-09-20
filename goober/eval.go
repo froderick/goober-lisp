@@ -216,48 +216,50 @@ func eval(context *context, v Value) Value {
 			panic("function names must be symbols: " + fn.String())
 		}
 
+		sym := *fn.Symbol
+
 		// special functions that take raw (un-eval'ed) arguments
 
-		if "def" == *fn.Symbol {
-			return special_def(context, v.List[1:])
+		rawArgs := v.List[1:]
+
+		if "def" == sym {
+			return special_def(context, rawArgs)
 		}
 
-		if "let" == *fn.Symbol {
-			return special_let(context, v.List[1:])
+		if "let" == sym {
+			return special_let(context, rawArgs)
 		}
 
-		if "if" == *fn.Symbol {
-			return special_if(context, v.List[1:])
+		if "if" == sym {
+			return special_if(context, rawArgs)
 		}
 
-		if "fn" == *fn.Symbol {
-			return special_fn(v.List[1:])
+		if "fn" == sym {
+			return special_fn(rawArgs)
 		}
 
 		// builtin functions
 
-		args := make([]Value, 0, len(v.List)-1)
+		evaluatedArgs := make([]Value, 0, len(v.List)-1)
 		for i := 1; i < len(v.List); i++ {
 			elem := eval(context, v.List[i])
-			args = append(args, elem)
+			evaluatedArgs = append(evaluatedArgs, elem)
 		}
 
-		if "+" == *fn.Symbol {
-			return builtin_plus(args)
+		if "+" == sym {
+			return builtin_plus(evaluatedArgs)
 		}
 
 		// defined functions
 
-		resolved := context.get(*fn.Symbol)
+		resolved := context.get(sym)
 
 		if !resolved.isFn() {
-			panic("symbol is not bound to a function: " + *fn.Symbol)
+			panic("symbol is not bound to a function: " + sym)
 		}
 
 		// call fn here
 		// - resolve lexical bindings in elements (perhaps do let first?)
-
-		panic("function not defined: " + fn.String())
 	}
 
 	if v.isSymbol() {

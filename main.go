@@ -70,8 +70,6 @@ func tokenize(s string) []string {
 
 func parseAtom(s string) *Value {
 
-	//fmt.Println("parsing atom: " + s)
-
 	ival, err := strconv.Atoi(s)
 	if err == nil {
 		return &Value{Number: &ival}
@@ -87,6 +85,9 @@ func parseAtom(s string) *Value {
 	}
 }
 
+// Useful for 'consuming' from the head of a slice. Returns the popped value
+// from the slice, and updates the supplied slice pointer to not include the
+// popped value.
 func pop(items *[]string) *string {
 	if len(*items) == 0 {
 		return nil
@@ -147,7 +148,6 @@ func builtin_plus(vals []Value) Value {
 	return Value{Number: &base}
 }
 
-// TODO: think this out
 func eval(v Value) Value {
 
 	if v.List == nil {

@@ -15,12 +15,18 @@ Core components of a lisp:
 
 */
 
+type Fn struct {
+	Args       []string // the bindings we expect
+	Statements []Value  // the statements we'll eval
+}
+
 type Value struct {
 	Boolean *bool
 	Symbol  *string
 	Number  *int
 	Str     *string
 	List    []Value
+	Fn      *Fn
 }
 
 func (v Value) isBoolean() bool {
@@ -43,6 +49,10 @@ func (v Value) isList() bool {
 	return v.List != nil
 }
 
+func (v Value) isFn() bool {
+	return v.Fn != nil
+}
+
 func (v Value) isNil() bool {
 	return v.Symbol == nil && v.Number == nil && v.Str == nil && v.List == nil
 }
@@ -58,6 +68,8 @@ func (v Value) truthy() bool {
 		trimmed := strings.TrimSpace(*v.Str)
 		return len(trimmed) > 0
 	} else if v.List != nil {
+		return true
+	} else if v.Fn != nil {
 		return true
 	} else {
 		return false
@@ -82,6 +94,8 @@ func toSexpr(v Value) string {
 		}
 
 		return "(" + strings.Join(elements, " ") + ")"
+	} else if v.Fn != nil {
+		return fmt.Sprintf("%+v\n", v.Fn)
 	} else {
 		return "nil"
 	}
@@ -234,6 +248,45 @@ func special_if(env map[string]Value, vals []Value) Value {
 	}
 }
 
+/* what does the execution context look like?
+probably:
+  - global vars state (this is a pointer, its mutable and everything can see it)
+  - lexical bindings (this should be immutable for a given block of code)
+
+  so we need to pass around this state, and use a function to resolve bindings from it
+
+  we'll need a new Value type for functions. IFn? :)
+*/
+
+// TODO: the `env` map is really the `captured bindings` map. currently it reflects
+// global vars, but it should probably actually be the lexical bindings currently
+// in scope, with a fallback to global vars if nothing else matches.
+func special_fn(env map[string]Value, vals []Value) Value {
+
+	if len(vals) < 2 {
+		panic("fn takes least 2 parameters: " + Value{List: vals}.String())
+	}
+
+	rawParams := vals[0]
+	if !rawParams.isList() {
+		panic("expected args in the form of a list: " + rawParams.String())
+	}
+
+	// eval the params to determine their bindings
+	paramNames := make([]string, 0, len(rawParams.List))
+	for i := range rawParams.List {
+
+		name := rawParams.List[i]
+		if !name.isSymbol() {
+			panic("arguments to functions must be symbols: " + name.String())
+		}
+
+		paramNames = append(paramNames, *name.Symbol)
+	}
+
+	return Value{Fn: &Fn{Args: paramNames, Statements: vals[1:]}}
+}
+
 func builtin_plus(vals []Value) Value {
 	var base int = 0
 	for i := range vals {
@@ -274,6 +327,10 @@ func eval(env map[string]Value, v Value) Value {
 			return special_if(env, v.List[1:])
 		}
 
+		if "fn" == *fn.Symbol {
+			return special_fn(env, v.List[1:])
+		}
+
 		// builtin functions
 
 		args := make([]Value, 0, len(v.List)-1)
@@ -284,6 +341,21 @@ func eval(env map[string]Value, v Value) Value {
 
 		if "+" == *fn.Symbol {
 			return builtin_plus(args)
+		}
+
+		// defined functions
+
+		if resolved, ok := env[*fn.Symbol]; ok {
+
+			if !resolved.isFn() {
+				panic("var is not bound to a function: " + *fn.Symbol)
+			}
+
+			// call fn here
+			// - resolve lexical bindings in elements (perhaps do let first?)
+
+		} else {
+			panic("cannot find a var with this symbol name: " + *fn.Symbol)
 		}
 
 		panic("function not defined: " + fn.String())

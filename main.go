@@ -42,6 +42,21 @@ func (v Value) isNil() bool {
 	return v.Symbol == nil && v.Number == nil && v.Str == nil && v.List == nil
 }
 
+func (v Value) truthy() bool {
+	if v.Symbol != nil {
+		return true
+	} else if v.Number != nil {
+		return true
+	} else if v.Str != nil {
+		trimmed := strings.TrimSpace(*v.Str)
+		return len(trimmed) > 0
+	} else if v.List != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
 func toSexpr(v Value) string {
 	if v.Symbol != nil {
 		return *v.Symbol
@@ -169,6 +184,29 @@ func special_def(env map[string]Value, vals []Value) Value {
 	return Value{}
 }
 
+func special_if(env map[string]Value, vals []Value) Value {
+
+	if len(vals) < 2 {
+		panic("if takes at least 2 parameters: " + Value{List: vals}.String())
+	}
+
+	if len(vals) > 3 {
+		panic("if takes at most 3 parameters: " + Value{List: vals}.String())
+	}
+
+	test := eval(env, vals[0])
+
+	if test.truthy() {
+		return eval(env, vals[1])
+	} else {
+		if len(vals) == 2 {
+			return Value{}
+		} else {
+			return eval(env, vals[2])
+		}
+	}
+}
+
 func builtin_plus(vals []Value) Value {
 	var base int = 0
 	for i := range vals {
@@ -198,9 +236,17 @@ func eval(env map[string]Value, v Value) Value {
 			panic("function names must be symbols: " + fn.String())
 		}
 
+		// special functions that take raw (un-eval'ed) arguments
+
 		if "def" == *fn.Symbol {
 			return special_def(env, v.List[1:])
 		}
+
+		if "if" == *fn.Symbol {
+			return special_if(env, v.List[1:])
+		}
+
+		// builtin functions
 
 		args := make([]Value, 0, len(v.List)-1)
 		for i := 1; i < len(v.List); i++ {

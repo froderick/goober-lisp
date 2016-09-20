@@ -16,10 +16,15 @@ Core components of a lisp:
 */
 
 type Value struct {
-	Symbol *string
-	Number *int
-	Str    *string
-	List   []Value
+	Boolean *bool
+	Symbol  *string
+	Number  *int
+	Str     *string
+	List    []Value
+}
+
+func (v Value) isBoolean() bool {
+	return v.Boolean != nil
 }
 
 func (v Value) isSymbol() bool {
@@ -43,7 +48,9 @@ func (v Value) isNil() bool {
 }
 
 func (v Value) truthy() bool {
-	if v.Symbol != nil {
+	if v.Boolean != nil {
+		return *v.Boolean
+	} else if v.Symbol != nil {
 		return true
 	} else if v.Number != nil {
 		return true
@@ -59,7 +66,9 @@ func (v Value) truthy() bool {
 
 // Returns string s-expression to represent a Value.
 func toSexpr(v Value) string {
-	if v.Symbol != nil {
+	if v.Boolean != nil {
+		return strconv.FormatBool(*v.Boolean)
+	} else if v.Symbol != nil {
 		return *v.Symbol
 	} else if v.Number != nil {
 		return strconv.Itoa(*v.Number)
@@ -102,6 +111,15 @@ func tokenize(s string) []string {
 
 // Parse an s-expression value as an atom, or return nil if no atom can be derived
 func parseAtom(s string) *Value {
+
+	if "true" == s {
+		b := true
+		return &Value{Boolean: &b}
+	}
+	if "false" == s {
+		b := false
+		return &Value{Boolean: &b}
+	}
 
 	ival, err := strconv.Atoi(s)
 	if err == nil {
@@ -282,17 +300,25 @@ func eval(env map[string]Value, v Value) Value {
 	return v
 }
 
+func isEmpty(s string) bool {
+	t := strings.TrimSpace(s)
+	return len(t) == 0
+}
+
 func main() {
 	env := make(map[string]Value)
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("goober-lisp> ")
+
 		text, err := reader.ReadString('\n')
-		if err == nil {
+		if err != nil {
+			break
+		}
+
+		if !isEmpty(text) {
 			value := read(text)
 			fmt.Printf("%+v\n", eval(env, *value))
-		} else {
-			break
 		}
 	}
 }

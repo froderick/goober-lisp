@@ -30,6 +30,18 @@ func (v Value) isNumber() bool {
 	return v.Number != nil
 }
 
+func (v Value) isStr() bool {
+	return v.Str != nil
+}
+
+func (v Value) isList() bool {
+	return v.List != nil
+}
+
+func (v Value) isNil() bool {
+	return v.Symbol == nil && v.Number == nil && v.Str == nil && v.List == nil
+}
+
 func toSexpr(v Value) string {
 	if v.Symbol != nil {
 		return *v.Symbol
@@ -138,6 +150,25 @@ func read(s string) (v *Value) {
 	return parse(tokens)
 }
 
+// This function is special because it acts like a macro,
+// it operates on the raw values haneded to it from the
+// reader.
+func special_def(env map[string]Value, vals []Value) Value {
+
+	if len(vals) != 2 {
+		panic("def takes only 2 parameters: " + Value{List: vals}.String())
+	}
+
+	varName := vals[0]
+	if !varName.isSymbol() {
+		panic("vars can only be named by symbols: " + varName.String())
+	}
+
+	varVal := vals[1]
+	env[*varName.Symbol] = eval(env, varVal)
+	return Value{}
+}
+
 func builtin_plus(vals []Value) Value {
 	var base int = 0
 	for i := range vals {
@@ -150,45 +181,60 @@ func builtin_plus(vals []Value) Value {
 	return Value{Number: &base}
 }
 
-func eval(v Value) Value {
+func eval(env map[string]Value, v Value) Value {
 
-	if v.List == nil {
-		return v
+	if v.isList() {
+
+		// empty lists are just empty lists
+		if len(v.List) == 0 {
+			return v
+		}
+
+		fn := v.List[0]
+		if !fn.isSymbol() {
+			fn = eval(env, fn)
+		}
+		if !fn.isSymbol() {
+			panic("function names must be symbols: " + fn.String())
+		}
+
+		if "def" == *fn.Symbol {
+			return special_def(env, v.List[1:])
+		}
+
+		args := make([]Value, 0, len(v.List)-1)
+		for i := 1; i < len(v.List); i++ {
+			elem := eval(env, v.List[i])
+			args = append(args, elem)
+		}
+
+		if "+" == *fn.Symbol {
+			return builtin_plus(args)
+		}
+
+		panic("function not defined: " + fn.String())
 	}
 
-	// empty lists are just empty lists
-	if len(v.List) == 0 {
-		return v
+	if v.isSymbol() {
+		if replace, ok := env[*v.Symbol]; ok {
+			return replace
+		} else {
+			panic("cannot find a var with this symbol name: " + v.String())
+		}
 	}
 
-	evaluated := make([]Value, 0, len(v.List))
-	for i := range v.List {
-		elem := eval(v.List[i])
-		evaluated = append(evaluated, elem)
-	}
-
-	fn := evaluated[0]
-	args := evaluated[1:]
-
-	if !fn.isSymbol() {
-		panic("function names must be symbols: " + fn.String())
-	}
-
-	if "+" == *fn.Symbol {
-		return builtin_plus(args)
-	}
-
-	panic("function not defined: " + fn.String())
+	return v
 }
 
 func main() {
+	env := make(map[string]Value)
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("goober-lisp> ")
 		text, err := reader.ReadString('\n')
 		if err == nil {
 			value := read(text)
-			fmt.Printf("%+v\n", eval(*value))
+			fmt.Printf("%+v\n", eval(env, *value))
 		} else {
 			break
 		}

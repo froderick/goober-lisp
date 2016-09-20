@@ -57,6 +57,7 @@ func (v Value) truthy() bool {
 	}
 }
 
+// Returns string s-expression to represent a Value.
 func toSexpr(v Value) string {
 	if v.Symbol != nil {
 		return *v.Symbol
@@ -77,10 +78,12 @@ func toSexpr(v Value) string {
 	}
 }
 
+// Use toSexpr as a custom tostring formatter
 func (v Value) String() string {
 	return toSexpr(v)
 }
 
+// Split an s-expression string into tokens
 func tokenize(s string) []string {
 
 	s = strings.Replace(s, "(", " ( ", -1)
@@ -97,14 +100,13 @@ func tokenize(s string) []string {
 	return tokens
 }
 
+// Parse an s-expression value as an atom, or return nil if no atom can be derived
 func parseAtom(s string) *Value {
 
 	ival, err := strconv.Atoi(s)
 	if err == nil {
 		return &Value{Number: &ival}
-	}
-
-	if len(s) > 1 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
+	} else if len(s) > 1 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
 		i := s[1 : len(s)-1]
 		return &Value{Str: &i}
 	} else if len(s) > 0 {
@@ -126,6 +128,9 @@ func pop(items *[]string) *string {
 	return &first
 }
 
+// The inner version of parse, takes a pointer to a slice of tokens.
+// The slice is modified as the parsing logic consumes the tokens.
+// Returns a pointer to a Value.
 func _parse(tokens *[]string) (v *Value) {
 
 	if len(*tokens) == 0 {
@@ -154,12 +159,16 @@ func _parse(tokens *[]string) (v *Value) {
 	return val
 }
 
+// The public version of parse, takes a slice of tokens.
+// Returns a pointer to a Value.
 func parse(tokens []string) (v *Value) {
 	stream := make([]string, len(tokens))
 	copy(stream, tokens)
 	return _parse(&stream)
 }
 
+// The reader function to use when you want to read an s-expression string
+// into Value data structures.
 func read(s string) (v *Value) {
 	tokens := tokenize(s)
 	return parse(tokens)
@@ -219,6 +228,7 @@ func builtin_plus(vals []Value) Value {
 	return Value{Number: &base}
 }
 
+// Evaluates a Value data structure as code.
 func eval(env map[string]Value, v Value) Value {
 
 	if v.isList() {

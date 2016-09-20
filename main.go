@@ -3,6 +3,8 @@ package main
 import "fmt"
 import "strings"
 import "strconv"
+import "os"
+import "bufio"
 
 /*
 
@@ -180,6 +182,15 @@ func eval(v Value) Value {
 }
 
 func main() {
-	value := read("(+ 1 2 3)")
-	fmt.Printf("%+v\n", eval(*value))
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("goober-lisp> ")
+		text, err := reader.ReadString('\n')
+		if err == nil {
+			value := read(text)
+			fmt.Printf("%+v\n", eval(*value))
+		} else {
+			break
+		}
+	}
 }

@@ -251,6 +251,8 @@ func eval(context *context, v Value) Value {
 
 			rawArgs := v.List[1:]
 
+			// TODO: by putting these into a map of name -> fn(context, args)
+			// we would make these resolvable as symbols as well as functions
 			switch sym {
 			case "def":
 				return special_def(context, rawArgs)

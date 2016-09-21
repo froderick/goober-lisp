@@ -24,7 +24,7 @@ func main() {
 
 		if !isEmpty(text) {
 			value := goober.Read(text)
-			fmt.Printf("%+v\n", goober.Eval(globalVars, *value))
+			fmt.Printf("%v\n", goober.Eval(globalVars, *value))
 		}
 	}
 }

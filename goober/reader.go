@@ -149,6 +149,14 @@ func pop(items *[]string) *string {
 	return &first
 }
 
+func sym(sym string) Value {
+	return Value{Symbol: &sym}
+}
+
+func list(vals ...Value) Value {
+	return Value{List: vals}
+}
+
 // The inner version of parse, takes a pointer to a slice of tokens.
 // The slice is modified as the parsing logic consumes the tokens.
 // Returns a pointer to a Value.
@@ -177,6 +185,13 @@ func _parse(tokens *[]string) (v *Value) {
 	if val == nil {
 		panic("not a valid atom: " + *token)
 	}
+
+	if val.isSymbol() && *val.Symbol == "'" {
+		quoted := _parse(tokens)
+		q := list(sym("quote"), *quoted)
+		return &q
+	}
+
 	return val
 }
 

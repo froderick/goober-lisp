@@ -14,6 +14,7 @@ func isEmpty(s string) bool {
 
 func handle(globalVars map[string]goober.Value, input string) {
 
+	// not supposed to panic across packages, but too bad
 	defer func() {
 		if e := recover(); e != nil {
 			fmt.Printf("%s: %s", e, debug.Stack())

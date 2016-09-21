@@ -157,7 +157,6 @@ func special_fn(vals []Value) Value {
 		panic("expected args in the form of a list: " + rawParams.String())
 	}
 
-	// eval the params to determine their bindings
 	paramNames := make([]string, 0, len(rawParams.List))
 	for i := range rawParams.List {
 
@@ -178,38 +177,33 @@ func special_fn_call(name string, fn Fn, context *context, vals []Value) Value {
 		panic(fmt.Sprintf("%v takes %v parameters: %v", name, len(fn.Args), Value{List: vals}.String()))
 	}
 
-	// eval each binding, add it to the context
-
 	for i, bindingName := range fn.Args {
 		bindingExpr := vals[i]
-		//fmt.Printf("bindingName: %v, bindingExpr: %v", bindingName, bindingExpr)
 		bindingValue := eval(context, bindingExpr)
 		context.push(bindingName, bindingValue)
 	}
 
-	// eval the rest of the let arguments
-
 	var result Value
 	for _, expr := range fn.Statements { // TODO: these are not statements, they are expressions
 		result = eval(context, expr)
-		//fmt.Printf("expr: %v, result: %v\n", expr, result)
 	}
-
-	// pop off all the bindings
 
 	for range fn.Args {
 		context.pop() // TODO: these cleanups should happen even if evaulation fails
 	}
 
-	// return the result of the last statement in the fn block
-
 	return result
 }
 
+func special_quote(vals []Value) Value {
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("quote takes only 1 parameter: %v", Value{List: vals}))
+	}
+	param := vals[0]
+	return param
+}
+
 func builtin_plus(vals []Value) Value {
-
-	//fmt.Printf("plus got: %v\n", vals)
-
 	var base int = 0
 	for i := range vals {
 		val := vals[i]
@@ -259,6 +253,10 @@ func eval(context *context, v Value) Value {
 
 		if "fn" == sym {
 			return special_fn(rawArgs)
+		}
+
+		if "quote" == sym {
+			return special_quote(rawArgs)
 		}
 
 		// builtin functions

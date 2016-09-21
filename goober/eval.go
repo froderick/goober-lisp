@@ -229,7 +229,6 @@ func eval(context *context, v Value) Value {
 
 	if v.isList() {
 
-		// empty lists are just empty lists
 		if len(v.List) == 0 {
 			return v
 		}
@@ -241,7 +240,7 @@ func eval(context *context, v Value) Value {
 		}
 
 		if fn.isFn() {
-			return special_fn_call("unknown", *fn.Fn, context, evalArgs(context, v))
+			return special_fn_call("anonymous", *fn.Fn, context, evalArgs(context, v))
 		}
 
 		if fn.isSymbol() {

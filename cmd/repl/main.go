@@ -23,7 +23,7 @@ func handle(globalVars map[string]goober.Value, input string) {
 
 	if !isEmpty(input) {
 		value := goober.Read(input)
-		fmt.Printf("%v\n", goober.Eval(globalVars, *value))
+		fmt.Printf("%v\n", goober.Eval(globalVars, value))
 	}
 }
 

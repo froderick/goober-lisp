@@ -285,6 +285,11 @@ func eval(context *context, v Value) Value {
 	}
 
 	if v.isSymbol() {
+
+		if "nil" == *v.Symbol {
+			return Value{}
+		}
+
 		return context.get(*v.Symbol)
 	}
 

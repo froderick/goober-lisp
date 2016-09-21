@@ -215,6 +215,15 @@ func builtin_plus(vals []Value) Value {
 	return Value{Number: &base}
 }
 
+func evalArgs(context *context, v Value) []Value {
+	evaluatedArgs := make([]Value, 0, len(v.List)-1)
+	for i := 1; i < len(v.List); i++ {
+		elem := eval(context, v.List[i])
+		evaluatedArgs = append(evaluatedArgs, elem)
+	}
+	return evaluatedArgs
+}
+
 // Evaluates a Value data structure as code.
 func eval(context *context, v Value) Value {
 
@@ -226,60 +235,50 @@ func eval(context *context, v Value) Value {
 		}
 
 		fn := v.List[0]
-		if !fn.isSymbol() {
+
+		if fn.isList() {
 			fn = eval(context, fn)
 		}
-		if !fn.isSymbol() {
-			panic("function names must be symbols: " + fn.String())
+
+		if fn.isFn() {
+			return special_fn_call("unknown", *fn.Fn, context, evalArgs(context, v))
 		}
 
-		sym := *fn.Symbol
+		if fn.isSymbol() {
 
-		// special functions that take raw (un-eval'ed) arguments
+			sym := *fn.Symbol
 
-		rawArgs := v.List[1:]
+			// special functions
 
-		if "def" == sym {
-			return special_def(context, rawArgs)
+			rawArgs := v.List[1:]
+
+			switch sym {
+			case "def":
+				return special_def(context, rawArgs)
+			case "let":
+				return special_let(context, rawArgs)
+			case "if":
+				return special_if(context, rawArgs)
+			case "fn":
+				return special_fn(rawArgs)
+			case "quote":
+				return special_quote(rawArgs)
+			case "+":
+				return builtin_plus(evalArgs(context, v))
+			}
+
+			// bound functions
+
+			resolved := context.get(sym)
+
+			if !resolved.isFn() {
+				panic("symbol is not bound to a function: " + sym)
+			}
+
+			return special_fn_call(sym, *resolved.Fn, context, evalArgs(context, v))
 		}
 
-		if "let" == sym {
-			return special_let(context, rawArgs)
-		}
-
-		if "if" == sym {
-			return special_if(context, rawArgs)
-		}
-
-		if "fn" == sym {
-			return special_fn(rawArgs)
-		}
-
-		if "quote" == sym {
-			return special_quote(rawArgs)
-		}
-
-		// builtin functions
-
-		evaluatedArgs := make([]Value, 0, len(v.List)-1)
-		for i := 1; i < len(v.List); i++ {
-			elem := eval(context, v.List[i])
-			evaluatedArgs = append(evaluatedArgs, elem)
-		}
-
-		if "+" == sym {
-			return builtin_plus(evaluatedArgs)
-		}
-
-		// defined functions
-
-		resolved := context.get(sym)
-
-		if !resolved.isFn() {
-			panic("symbol is not bound to a function: " + sym)
-		}
-
-		return special_fn_call(sym, *resolved.Fn, context, evaluatedArgs)
+		panic("function names must be symbols: " + fn.String())
 	}
 
 	if v.isSymbol() {

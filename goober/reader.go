@@ -113,27 +113,27 @@ func tokenize(s string) []string {
 }
 
 // Parse an s-expression value as an atom, or return nil if no atom can be derived
-func parseAtom(s string) *Value {
+func parseAtom(s string) Value {
 
 	if "true" == s {
 		b := true
-		return &Value{Boolean: &b}
+		return Value{Boolean: &b}
 	}
 	if "false" == s {
 		b := false
-		return &Value{Boolean: &b}
+		return Value{Boolean: &b}
 	}
 
 	ival, err := strconv.Atoi(s)
 	if err == nil {
-		return &Value{Number: &ival}
+		return Value{Number: &ival}
 	} else if len(s) > 1 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
 		i := s[1 : len(s)-1]
-		return &Value{Str: &i}
+		return Value{Str: &i}
 	} else if len(s) > 0 {
-		return &Value{Symbol: &s}
+		return Value{Symbol: &s}
 	} else {
-		return nil
+		panic("not a valid atom: " + s)
 	}
 }
 
@@ -160,7 +160,7 @@ func list(vals ...Value) Value {
 // The inner version of parse, takes a pointer to a slice of tokens.
 // The slice is modified as the parsing logic consumes the tokens.
 // Returns a pointer to a Value.
-func _parse(tokens *[]string) (v *Value) {
+func _parse(tokens *[]string) Value {
 
 	if len(*tokens) == 0 {
 		panic("no tokens supplied")
@@ -173,23 +173,18 @@ func _parse(tokens *[]string) (v *Value) {
 		for {
 			if (*tokens)[0] == ")" {
 				pop(tokens) // dump )
-				return &Value{List: sexpr}
+				return Value{List: sexpr}
 			} else {
 				v := _parse(tokens)
-				sexpr = append(sexpr, *v)
+				sexpr = append(sexpr, v)
 			}
 		}
 	}
 
 	val := parseAtom(*token)
-	if val == nil {
-		panic("not a valid atom: " + *token)
-	}
 
 	if val.isSymbol() && *val.Symbol == "'" {
-		quoted := _parse(tokens)
-		q := list(sym("quote"), *quoted)
-		return &q
+		return list(sym("quote"), _parse(tokens))
 	}
 
 	return val
@@ -197,7 +192,7 @@ func _parse(tokens *[]string) (v *Value) {
 
 // The public version of parse, takes a slice of tokens.
 // Returns a pointer to a Value.
-func parse(tokens []string) (v *Value) {
+func parse(tokens []string) Value {
 	stream := make([]string, len(tokens))
 	copy(stream, tokens)
 	return _parse(&stream)
@@ -205,7 +200,7 @@ func parse(tokens []string) (v *Value) {
 
 // The reader function to use when you want to read an s-expression string
 // into Value data structures.
-func Read(s string) (v *Value) {
+func Read(s string) Value {
 	tokens := tokenize(s)
 	return parse(tokens)
 }

@@ -12,7 +12,7 @@ func isEmpty(s string) bool {
 	return len(t) == 0
 }
 
-func handle(globalVars map[string]goober.Value, input string) {
+func handle(ns *goober.Ns, input string) {
 
 	// not supposed to panic across packages, but too bad
 	defer func() {
@@ -23,22 +23,22 @@ func handle(globalVars map[string]goober.Value, input string) {
 
 	if !isEmpty(input) {
 		value := goober.Read(input)
-		fmt.Printf("%v\n", goober.Eval(globalVars, value))
+		fmt.Printf("%v\n", goober.Eval(ns, value))
 	}
 }
 
 func main() {
-	globalVars := make(map[string]goober.Value)
+	ns := goober.NewNs("user")
 	for {
 
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("goober-lisp> ")
+		fmt.Print(ns.Name + "> ")
 
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			break
 		}
 
-		handle(globalVars, input)
+		handle(&ns, input)
 	}
 }

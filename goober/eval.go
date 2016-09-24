@@ -20,16 +20,20 @@ func (v fn) prn() string {
 
 // data structures to support vars and bindings
 
-type ns struct {
-	name string
+type Ns struct {
+	Name string
 	vars map[string]Value
 }
 
-func (ns *ns) def(name string, value Value) {
+func NewNs(name string) Ns {
+	return Ns{Name: "user", vars: map[string]Value{}}
+}
+
+func (ns *Ns) def(name string, value Value) {
 	ns.vars[name] = value
 }
 
-func (ns *ns) undef(name string) {
+func (ns *Ns) undef(name string) {
 	delete(ns.vars, name)
 }
 
@@ -39,7 +43,7 @@ type binding struct {
 }
 
 type context struct {
-	ns       *ns
+	ns       *Ns
 	bindings []binding
 }
 
@@ -340,12 +344,10 @@ func eval(context *context, v Value) Value {
 	}
 }
 
-func Eval(globalVars map[string]Value, v Value) Value {
-
-	ns := ns{name: "user", vars: map[string]Value{}}
+func Eval(ns *Ns, v Value) Value {
 
 	context := context{
-		ns:       &ns,
+		ns:       ns,
 		bindings: make([]binding, 0),
 	}
 

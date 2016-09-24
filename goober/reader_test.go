@@ -1,4 +1,4 @@
-package main
+package goober
 
 import "testing"
 import "fmt"

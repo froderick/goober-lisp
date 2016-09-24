@@ -165,11 +165,11 @@ func Parse(ts TokenStream) Value {
 	return val
 }
 
-type StringStream struct {
+type stringStream struct {
 	tokens []string
 }
 
-func (s *StringStream) Peek() (string, error) {
+func (s *stringStream) Peek() (string, error) {
 	if len(s.tokens) == 0 {
 		return "", errors.New("stream is empty")
 	}
@@ -177,7 +177,7 @@ func (s *StringStream) Peek() (string, error) {
 	return first, nil
 }
 
-func (s *StringStream) Pop() (string, error) {
+func (s *stringStream) Pop() (string, error) {
 	if len(s.tokens) == 0 {
 		return "", errors.New("stream is empty")
 	}
@@ -186,10 +186,14 @@ func (s *StringStream) Pop() (string, error) {
 	return first, nil
 }
 
+func NewTokenStream(tokens ...string) TokenStream {
+	return &stringStream{tokens: tokens}
+}
+
 // The reader function to use when you want to read an s-expression string
 // into Value data structures.
 func Read(s string) Value {
 	tokens := tokenize(s)
-	ts := StringStream{tokens: tokens}
-	return Parse(&ts)
+	ts := NewTokenStream(tokens...)
+	return Parse(ts)
 }

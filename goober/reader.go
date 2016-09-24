@@ -1,15 +1,24 @@
-package main
+package goober
 
 import "strconv"
 import "strings"
 import "errors"
 
+// Defines the basic union of types that can be used
+// as parameters or return values.
 type Value interface {
 	truthy() bool
 	prn() string
 }
 
+// incorporate the reader data structures as values
+
 type Nil struct{}
+type Boolean bool
+type Symbol string
+type Int int
+type Str string
+type Sexpr []Value
 
 func (v Nil) truthy() bool {
 	return false
@@ -19,8 +28,6 @@ func (v Nil) prn() string {
 	return "nil"
 }
 
-type Boolean bool
-
 func (v Boolean) truthy() bool {
 	return bool(v)
 }
@@ -28,8 +35,6 @@ func (v Boolean) truthy() bool {
 func (v Boolean) prn() string {
 	return strconv.FormatBool(bool(v))
 }
-
-type Symbol string
 
 func (v Symbol) truthy() bool {
 	return true
@@ -39,8 +44,6 @@ func (v Symbol) prn() string {
 	return string(v)
 }
 
-type Int int
-
 func (v Int) truthy() bool {
 	return int(v) != 0
 }
@@ -48,8 +51,6 @@ func (v Int) truthy() bool {
 func (v Int) prn() string {
 	return strconv.Itoa(int(v))
 }
-
-type Str string
 
 func (v Str) truthy() bool {
 	trimmed := strings.TrimSpace(string(v))
@@ -59,8 +60,6 @@ func (v Str) truthy() bool {
 func (v Str) prn() string {
 	return string(v)
 }
-
-type Sexpr []Value
 
 func (v Sexpr) truthy() bool {
 	return true

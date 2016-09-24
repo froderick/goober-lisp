@@ -44,3 +44,14 @@ func TestReadSexpr(t *testing.T) {
 func TestReadQuote(t *testing.T) {
 	assertEqual(t, Read("'(foo)"), sexpr(sym("quote"), sexpr(sym("foo"))))
 }
+
+func a(ts TokenStream) {
+	ts.Pop()
+}
+
+func TestStringStream(t *testing.T) {
+	var ts TokenStream = &StringStream{tokens: []string{"a", "b", "c"}}
+	a(ts)
+	x, _ := ts.Pop()
+	assertEqual(t, x, "b")
+}

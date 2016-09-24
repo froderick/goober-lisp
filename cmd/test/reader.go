@@ -1,8 +1,8 @@
 package main
 
-import "fmt"
 import "strconv"
 import "strings"
+import "errors"
 
 type Value interface {
 	truthy() bool
@@ -123,45 +123,40 @@ func parseAtom(s string) Value {
 // Useful for 'consuming' from the head of a slice. Returns the popped value
 // from the slice, and updates the supplied slice pointer to not include the
 // popped value.
-func pop(items *[]string) *string {
-	if len(*items) == 0 {
-		return nil
-	}
-	first, rest := (*items)[0], (*items)[1:]
-	*items = rest
-	return &first
+type TokenStream interface {
+	Peek() (string, error)
+	Pop() (string, error)
 }
 
 // The inner version of parse, takes a pointer to a slice of tokens.
 // The slice is modified as the parsing logic consumes the tokens.
 // Returns a pointer to a Value.
-func _parse(tokens *[]string) Value {
+func Parse(ts TokenStream) Value {
 
-	if len(*tokens) == 0 {
+	token, err := ts.Pop()
+	if err != nil {
 		panic("no tokens supplied")
 	}
 
-	token := pop(tokens)
-
-	if *token == "(" {
-		sexpr := make([]Value, 0)
+	if token == "(" {
+		elements := make([]Value, 0)
 		for {
-			if (*tokens)[0] == ")" {
-				pop(tokens) // dump )
-				return Sexpr(sexpr)
+			if next, _ := ts.Peek(); next == ")" {
+				ts.Pop() // dump )
+				return Sexpr(elements)
 			} else {
-				v := _parse(tokens)
-				sexpr = append(sexpr, v)
+				v := Parse(ts)
+				elements = append(elements, v)
 			}
 		}
 	}
 
-	val := parseAtom(*token)
+	val := parseAtom(token)
 
 	switch val := val.(type) {
 	case Symbol:
 		if string(val) == "'" {
-			return Sexpr([]Value{Symbol("quote"), _parse(tokens)})
+			return Sexpr([]Value{Symbol("quote"), Parse(ts)})
 		}
 	default:
 		return val
@@ -170,17 +165,31 @@ func _parse(tokens *[]string) Value {
 	return val
 }
 
-// The public version of parse, takes a slice of tokens.
-// Returns a pointer to a Value.
-func parse(tokens []string) Value {
-	stream := make([]string, len(tokens))
-	copy(stream, tokens)
-	return _parse(&stream)
+type StringStream struct {
+	tokens []string
+}
+
+func (s *StringStream) Peek() (string, error) {
+	if len(s.tokens) == 0 {
+		return "", errors.New("stream is empty")
+	}
+	first := s.tokens[0]
+	return first, nil
+}
+
+func (s *StringStream) Pop() (string, error) {
+	if len(s.tokens) == 0 {
+		return "", errors.New("stream is empty")
+	}
+	first, rest := s.tokens[0], s.tokens[1:]
+	s.tokens = rest
+	return first, nil
 }
 
 // The reader function to use when you want to read an s-expression string
 // into Value data structures.
 func Read(s string) Value {
 	tokens := tokenize(s)
-	return parse(tokens)
+	ts := StringStream{tokens: tokens}
+	return Parse(&ts)
 }

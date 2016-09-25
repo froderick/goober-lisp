@@ -28,6 +28,10 @@ func (v Nil) prn() string {
 	return "nil"
 }
 
+func (v Nil) String() string {
+	return v.prn()
+}
+
 func (v Boolean) truthy() bool {
 	return bool(v)
 }
@@ -85,6 +89,7 @@ func tokenize(s string) []string {
 
 	s = strings.Replace(s, "(", " ( ", -1)
 	s = strings.Replace(s, ")", " ) ", -1)
+	s = strings.Replace(s, "'", " ' ", -1)
 	parts := strings.Split(s, " ")
 
 	tokens := make([]string, 0, len(parts))

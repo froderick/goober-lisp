@@ -43,6 +43,7 @@ func TestReadSexpr(t *testing.T) {
 
 func TestReadQuote(t *testing.T) {
 	assertEqual(t, Read("'(foo)"), sexpr(sym("quote"), sexpr(sym("foo"))))
+	assertEqual(t, Read("'f"), sexpr(sym("quote"), (sym("f"))))
 }
 
 func doPop(ts TokenStream) string {

@@ -253,6 +253,27 @@ func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 	return result
 }
 
+func special_do(context *context, vals []Value) Value {
+
+	var result Value
+	for _, expr := range vals {
+		result = eval(context, expr)
+	}
+
+	return result
+}
+
+func special_list(context *context, vals []Value) Value {
+
+	elements := make([]Value, 0, len(vals))
+	for _, expr := range vals {
+		result := eval(context, expr)
+		elements = append(elements, result)
+	}
+
+	return Sexpr(elements)
+}
+
 func special_quote(vals []Value) Value {
 	if len(vals) != 1 {
 		panic(fmt.Sprintf("quote takes only 1 parameter: %v", vals))
@@ -315,6 +336,10 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return special_fn(rawArgs)
 		case "quote":
 			return special_quote(rawArgs)
+		case "do":
+			return special_do(context, rawArgs)
+		case "list":
+			return special_list(context, rawArgs)
 		case "+":
 			return builtin_plus(evalRest(context, v))
 		}

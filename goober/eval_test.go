@@ -1,49 +1,89 @@
 package goober
 
 import "testing"
+import "fmt"
+import "runtime/debug"
+import "reflect"
+
+// eval utilities
+
+func test_eval_ns(ns *Ns, s string) Value {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("%s: %s", e, debug.Stack())
+		}
+	}()
+	sexpr := Read(s)
+	return Eval(ns, sexpr)
+}
 
 func test_eval(s string) Value {
 	ns := NewNs("user")
-	sexpr := Read(s)
-	return Eval(&ns, sexpr)
+	return test_eval_ns(&ns, s)
 }
 
-func TestEvalPlus(t *testing.T) {
-	assertEqual(t, test_eval("(+ 1 2 3)"), Int(6))
+// eval test data
+
+type testPair struct {
+	input    string
+	expected Value
 }
 
-func TestEvalDef(t *testing.T) {
-	ns := NewNs("user")
-	assertEqual(t, Eval(&ns, Read("(def f \"F\")")), Nil{})
-	assertEqual(t, Eval(&ns, Read("f")), Str("F"))
+var tests = []testPair{
+	testPair{input: "(+ 1 2 3)", expected: Int(6)},
+
+	testPair{input: "(let (a 1 b 2) a)", expected: Int(1)},
+	testPair{input: "'y", expected: Symbol("y")},
+
+	testPair{input: "(if nil 'y 'n)", expected: Symbol("n")},
+
+	testPair{input: "(if true 'y 'n)", expected: Symbol("y")},
+	testPair{input: "(if false 'y 'n)", expected: Symbol("n")},
+
+	testPair{input: "(if 'x 'y 'n)", expected: Symbol("y")},
+
+	testPair{input: "(if -1 'y 'n)", expected: Symbol("y")},
+	testPair{input: "(if 0 'y 'n)", expected: Symbol("n")},
+	testPair{input: "(if 1 'y 'n)", expected: Symbol("y")},
+
+	testPair{input: "(if \"\" 'y 'n)", expected: Symbol("n")},
+	//testPair{input: "(if \" \" 'y 'n)", expected: Symbol("y")}, // TODO: this will not work because our lexer sucks
+	testPair{input: "(if \"test\" 'y 'n)", expected: Symbol("y")},
+
+	testPair{input: "(if () 'y 'n)", expected: Symbol("y")},
+	testPair{input: "(if '(1) 'y 'n)", expected: Symbol("y")},
+
+	testPair{
+		input: "(fn (a) (+ 1 2) (+ a 10))",
+		expected: fn{
+			args: []Symbol{Symbol("a")},
+			exprs: sexpr(
+				sexpr(Symbol("+"), Int(1), Int(2)),
+				sexpr(Symbol("+"), Symbol("a"), Int(10)),
+			),
+		},
+	},
+	testPair{input: "((fn (a) (+ 1 2) (+ a 10)) 5)", expected: Int(15)},
+
+	testPair{input: "'(1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
+	testPair{input: "(quote (1 2 3))", expected: sexpr(Int(1), Int(2), Int(3))},
+
+	testPair{
+		input: `(let (def-result (def x 100))
+	              (list def-result x))`,
+		expected: sexpr(Nil{}, Int(100)),
+	},
 }
 
-func TestEvalLet(t *testing.T) {
-	assertEqual(t, test_eval("(let (a 1 b 2) a)"), Int(1))
-}
-
-func TestEvalQuote(t *testing.T) {
-	assertEqual(t, test_eval("'y"), Symbol("y"))
-}
-
-func TestEvalIf(t *testing.T) {
-
-	assertEqual(t, test_eval("(if nil 'y 'n)"), Symbol("n"))
-
-	assertEqual(t, test_eval("(if true 'y 'n)"), Symbol("y"))
-	assertEqual(t, test_eval("(if false 'y 'n)"), Symbol("n"))
-
-	assertEqual(t, test_eval("(if 'x 'y 'n)"), Symbol("y"))
-
-	assertEqual(t, test_eval("(if -1 'y 'n)"), Symbol("y"))
-	assertEqual(t, test_eval("(if 0 'y 'n)"), Symbol("n"))
-	assertEqual(t, test_eval("(if 1 'y 'n)"), Symbol("y"))
-
-	assertEqual(t, test_eval("(if \"\" 'y 'n)"), Symbol("n"))
-	// assertEqual(t, test_eval("(if \" \" 'y 'n)"), Symbol("y")) // TODO: this will not work because our lexer sucks
-	assertEqual(t, test_eval("(if \"test\" 'y 'n)"), Symbol("y"))
-
-	assertEqual(t, test_eval("(if () 'y 'n)"), Symbol("y"))
-	assertEqual(t, test_eval("(if '(1) 'y 'n)"), Symbol("y"))
-
+func TestEval(t *testing.T) {
+	for _, pair := range tests {
+		v := test_eval(pair.input)
+		if !reflect.DeepEqual(pair.expected, v) {
+			t.Error(
+				"For", pair.input,
+				"expected", pair.expected,
+				"got", v,
+			)
+		}
+	}
 }

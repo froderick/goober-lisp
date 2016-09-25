@@ -10,12 +10,22 @@ type fn struct {
 	exprs []Value
 }
 
+type recur []Value
+
 func (v fn) truthy() bool {
 	return true
 }
 
 func (v fn) prn() string {
 	return fmt.Sprintf("#fn[%v]", v)
+}
+
+func (v recur) truthy() bool {
+	return true
+}
+
+func (v recur) prn() string {
+	return fmt.Sprintf("#recur[%v]", v)
 }
 
 // data structures to support vars and bindings
@@ -212,6 +222,7 @@ func special_if(context *context, vals []Value) Value {
 	}
 }
 
+// TODO: verify that calls to recur are in tail position and take the right amount of arguments
 func special_fn(vals []Value) fn {
 
 	if len(vals) < 2 {
@@ -229,7 +240,7 @@ func special_fn(vals []Value) fn {
 	return fn{args: names, exprs: vals[1:]}
 }
 
-func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
+func special_fn_call_inner(name string, fn fn, context *context, vals []Value) Value {
 
 	if len(vals) < len(fn.args) {
 		panic(fmt.Sprintf("%v takes %v parameters: %v", name, len(fn.args), vals))
@@ -253,6 +264,19 @@ func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 	return result
 }
 
+func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
+
+	result := special_fn_call_inner(name, fn, context, vals)
+	for {
+		switch r := result.(type) {
+		case recur:
+			result = special_fn_call_inner(name, fn, context, r)
+		default:
+			return result
+		}
+	}
+}
+
 func special_do(context *context, vals []Value) Value {
 
 	var result Value
@@ -261,6 +285,10 @@ func special_do(context *context, vals []Value) Value {
 	}
 
 	return result
+}
+
+func builtin_recur(vals []Value) Value {
+	return recur(vals)
 }
 
 func builtin_list(vals []Value) Value {
@@ -330,6 +358,22 @@ func builtin_plus(vals []Value) Int {
 	return Int(base)
 }
 
+func builtin_eq(vals []Value) Boolean {
+
+	if len(vals) < 1 {
+		panic(fmt.Sprintf("= takes at least 1 parameter: %v", vals))
+	}
+
+	base := int(requireInt(vals[0], "arguments to '=' must be numbers"))
+	for _, i := range vals[1:] {
+		val := int(requireInt(i, "arguments to '=' must be numbers"))
+		if val != base {
+			return Boolean(false)
+		}
+	}
+	return Boolean(true)
+}
+
 func evalRest(context *context, v Sexpr) []Value {
 	rest := make([]Value, 0, len(v)-1)
 	for _, item := range v[1:] {
@@ -351,7 +395,7 @@ func evalSexpr(context *context, v Sexpr) Value {
 		resolved := make([]Value, 0)
 		resolved = append(resolved, eval(context, first))
 		resolved = append(resolved, v[1:]...)
-		return evalSexpr(context, Sexpr(resolved))
+		return eval(context, Sexpr(resolved))
 
 	case fn:
 		return special_fn_call("anonymous", first, context, evalRest(context, v))
@@ -377,6 +421,8 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return special_quote(rawArgs)
 		case "do":
 			return special_do(context, rawArgs)
+		case "recur":
+			return builtin_recur(evalRest(context, v))
 		case "list":
 			return builtin_list(evalRest(context, v))
 		case "first":
@@ -387,6 +433,8 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return builtin_cons(evalRest(context, v))
 		case "+":
 			return builtin_plus(evalRest(context, v))
+		case "=":
+			return builtin_eq(evalRest(context, v))
 		}
 
 		// bound functions
@@ -401,6 +449,10 @@ func evalSexpr(context *context, v Sexpr) Value {
 
 // Evaluates a Value data structure as code.
 func eval(context *context, v Value) Value {
+
+	//fmt.Printf("eval() input: %v\n", v)
+	//fmt.Printf("eval() bindings: %v\n", context.bindings)
+
 	switch v := v.(type) {
 	case Sexpr:
 		return evalSexpr(context, v)

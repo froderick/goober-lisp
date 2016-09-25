@@ -30,26 +30,27 @@ type testPair struct {
 }
 
 var tests = []testPair{
-	testPair{input: "(+ 1 2 3)", expected: Int(6)},
+
+	// special functions (macros)
+
+	testPair{
+		input: `(let (def-result (def x 100))
+	              (list def-result x))`,
+		expected: sexpr(Nil{}, Int(100)),
+	},
 
 	testPair{input: "(let (a 1 b 2) a)", expected: Int(1)},
-	testPair{input: "'y", expected: Symbol("y")},
 
 	testPair{input: "(if nil 'y 'n)", expected: Symbol("n")},
-
 	testPair{input: "(if true 'y 'n)", expected: Symbol("y")},
 	testPair{input: "(if false 'y 'n)", expected: Symbol("n")},
-
 	testPair{input: "(if 'x 'y 'n)", expected: Symbol("y")},
-
 	testPair{input: "(if -1 'y 'n)", expected: Symbol("y")},
 	testPair{input: "(if 0 'y 'n)", expected: Symbol("n")},
 	testPair{input: "(if 1 'y 'n)", expected: Symbol("y")},
-
 	testPair{input: "(if \"\" 'y 'n)", expected: Symbol("n")},
 	//testPair{input: "(if \" \" 'y 'n)", expected: Symbol("y")}, // TODO: this will not work because our lexer sucks
 	testPair{input: "(if \"test\" 'y 'n)", expected: Symbol("y")},
-
 	testPair{input: "(if () 'y 'n)", expected: Symbol("y")},
 	testPair{input: "(if '(1) 'y 'n)", expected: Symbol("y")},
 
@@ -65,14 +66,19 @@ var tests = []testPair{
 	},
 	testPair{input: "((fn (a) (+ 1 2) (+ a 10)) 5)", expected: Int(15)},
 
+	testPair{input: "'y", expected: Symbol("y")},
 	testPair{input: "'(1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
 	testPair{input: "(quote (1 2 3))", expected: sexpr(Int(1), Int(2), Int(3))},
 
-	testPair{
-		input: `(let (def-result (def x 100))
-	              (list def-result x))`,
-		expected: sexpr(Nil{}, Int(100)),
-	},
+	testPair{input: "(do (+ 1 2 3) 5)", expected: Int(5)},
+
+	// builtin functions (not macros)
+
+	testPair{input: "(list 1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
+	testPair{input: "(first '(1 2 3))", expected: Int(1)},
+	testPair{input: "(rest '(1 2 3))", expected: sexpr(Int(2), Int(3))},
+	testPair{input: "(cons 100 '())", expected: sexpr(Int(100))},
+	testPair{input: "(+ 1 2 3)", expected: Int(6)},
 }
 
 func TestEval(t *testing.T) {

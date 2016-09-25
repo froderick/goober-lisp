@@ -263,15 +263,54 @@ func special_do(context *context, vals []Value) Value {
 	return result
 }
 
-func special_list(context *context, vals []Value) Value {
+func builtin_list(vals []Value) Value {
+	return Sexpr(vals)
+}
 
-	elements := make([]Value, 0, len(vals))
-	for _, expr := range vals {
-		result := eval(context, expr)
-		elements = append(elements, result)
+func builtin_first(vals []Value) Value {
+
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("first takes only 1 parameter: %v", vals))
 	}
 
-	return Sexpr(elements)
+	list := requireSexpr(vals[0], "first takes a list")
+
+	if len(list) == 0 {
+		return Nil{}
+	} else {
+		return list[0]
+	}
+}
+
+func builtin_rest(vals []Value) Value {
+
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("rest takes only 1 parameter: %v", vals))
+	}
+
+	list := requireSexpr(vals[0], "rest takes a list")
+
+	if len(list) == 0 {
+		return Nil{}
+	} else {
+		return Sexpr(list[1:]) // this will probably bite me in the ass
+	}
+}
+
+func builtin_cons(vals []Value) Value {
+
+	if len(vals) != 2 {
+		panic(fmt.Sprintf("cons takes only 2 parameters: %v", vals))
+	}
+
+	x := vals[0]
+	list := requireSexpr(vals[1], "second argument must be a list")
+
+	newList := make([]Value, 0, len(list)+1)
+	newList = append(newList, x)
+	newList = append(newList, list...)
+
+	return Sexpr(newList)
 }
 
 func special_quote(vals []Value) Value {
@@ -339,7 +378,13 @@ func evalSexpr(context *context, v Sexpr) Value {
 		case "do":
 			return special_do(context, rawArgs)
 		case "list":
-			return special_list(context, rawArgs)
+			return builtin_list(evalRest(context, v))
+		case "first":
+			return builtin_first(evalRest(context, v))
+		case "rest":
+			return builtin_rest(evalRest(context, v))
+		case "cons":
+			return builtin_cons(evalRest(context, v))
 		case "+":
 			return builtin_plus(evalRest(context, v))
 		}

@@ -6,8 +6,9 @@ import "fmt"
 // incorporate functions as value types
 
 type fn struct {
-	args  []Symbol
-	exprs []Value
+	args    []Symbol
+	exprs   []Value
+	context context
 }
 
 type recur []Value
@@ -222,8 +223,7 @@ func special_if(context *context, vals []Value) Value {
 	}
 }
 
-// TODO: verify that calls to recur are in tail position and take the right amount of arguments
-func special_fn(vals []Value) fn {
+func special_fn(context *context, vals []Value) fn {
 
 	if len(vals) < 2 {
 		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
@@ -237,10 +237,11 @@ func special_fn(vals []Value) fn {
 		names = append(names, name)
 	}
 
-	return fn{args: names, exprs: vals[1:]}
+	// intentionally copying the context here, that becomes part of the fn
+	return fn{args: names, exprs: vals[1:], context: *context}
 }
 
-func special_fn_call_inner(name string, fn fn, context *context, vals []Value) Value {
+func special_fn_call_inner(name string, fn *fn, context *context, vals []Value) Value {
 
 	if len(vals) < len(fn.args) {
 		panic(fmt.Sprintf("%v takes %v parameters: %v", name, len(fn.args), vals))
@@ -249,16 +250,13 @@ func special_fn_call_inner(name string, fn fn, context *context, vals []Value) V
 	for i, bindingname := range fn.args {
 		bindingExpr := vals[i]
 		bindingValue := eval(context, bindingExpr)
-		context.push(bindingname, bindingValue)
+		fn.context.push(bindingname, bindingValue)
+		defer fn.context.pop()
 	}
 
 	var result Value
 	for _, expr := range fn.exprs {
-		result = eval(context, expr)
-	}
-
-	for range fn.args {
-		context.pop() // TODO: these cleanups should happen even if evaulation fails
+		result = eval(&fn.context, expr)
 	}
 
 	return result
@@ -266,11 +264,11 @@ func special_fn_call_inner(name string, fn fn, context *context, vals []Value) V
 
 func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 
-	result := special_fn_call_inner(name, fn, context, vals)
+	result := special_fn_call_inner(name, &fn, context, vals)
 	for {
 		switch r := result.(type) {
 		case recur:
-			result = special_fn_call_inner(name, fn, context, r)
+			result = special_fn_call_inner(name, &fn, context, r)
 		default:
 			return result
 		}
@@ -482,7 +480,7 @@ func evalSexpr(context *context, v Sexpr) Value {
 		case "if":
 			return special_if(context, rawArgs)
 		case "fn":
-			return special_fn(rawArgs)
+			return special_fn(context, rawArgs)
 		case "quote":
 			return special_quote(rawArgs)
 		case "do":

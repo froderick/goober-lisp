@@ -2,6 +2,7 @@ package goober
 
 import "math"
 import "fmt"
+import "strings"
 
 // incorporate functions as value types
 
@@ -135,6 +136,15 @@ func requireInt(v Value, msg string) Int {
 func requireSexpr(v Value, msg string) Sexpr {
 	switch x := v.(type) {
 	case Sexpr:
+		return x
+	default:
+		panic(fmt.Sprintf(msg+": %v", v))
+	}
+}
+
+func requireHashMap(v Value, msg string) HashMap {
+	switch x := v.(type) {
+	case HashMap:
 		return x
 	default:
 		panic(fmt.Sprintf(msg+": %v", v))
@@ -285,6 +295,14 @@ func special_do(context *context, vals []Value) Value {
 	return result
 }
 
+func special_quote(vals []Value) Value {
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("quote takes only 1 parameter: %v", vals))
+	}
+	param := vals[0]
+	return param
+}
+
 func builtin_recur(vals []Value) Value {
 	return recur(vals)
 }
@@ -339,12 +357,72 @@ func builtin_cons(vals []Value) Value {
 	return Sexpr(newList)
 }
 
-func special_quote(vals []Value) Value {
-	if len(vals) != 1 {
-		panic(fmt.Sprintf("quote takes only 1 parameter: %v", vals))
+type HashMap map[Value]Value
+
+func (v HashMap) truthy() bool {
+	return len(v) > 0
+}
+
+func (v HashMap) prn() string {
+
+	kvs := make([]string, 0, len(v)+2)
+	kvs = append(kvs, "(hash-map")
+	for k, val := range v {
+		kvs = append(kvs, k.prn(), val.prn())
 	}
-	param := vals[0]
-	return param
+	kvs = append(kvs, ")")
+
+	s := strings.Join(kvs, " ")
+
+	return s
+}
+
+func (v HashMap) String() string {
+	return v.prn()
+}
+
+func builtin_hashmap(vals []Value) Value {
+
+	if math.Mod(float64(len(vals)), 2) != 0 {
+		panic(fmt.Sprintf("hash-map's arguments must be an even number of values: %v", vals))
+	}
+
+	kvs := map[Value]Value{}
+	for i := 0; i < len(vals); i += 2 {
+		k := vals[i]
+		val := vals[i+1]
+		kvs[k] = val
+	}
+
+	return HashMap(kvs)
+}
+
+func builtin_get(vals []Value) Value {
+
+	if len(vals) != 2 {
+		panic(fmt.Sprintf("get takes 2 parameters: %v", vals))
+	}
+
+	m := requireHashMap(vals[1], "second argument must be a map")
+
+	return m[vals[0]]
+}
+
+func builtin_put(vals []Value) Value {
+
+	if len(vals) != 3 {
+		panic(fmt.Sprintf("get takes 3 parameters: %v", vals))
+	}
+
+	m := requireHashMap(vals[0], "first argument must be a map")
+
+	copy := make(map[Value]Value, len(m))
+	for k, v := range m {
+		copy[k] = v
+	}
+	copy[vals[1]] = vals[2]
+
+	return HashMap(copy)
 }
 
 func builtin_plus(vals []Value) Int {
@@ -507,6 +585,12 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return builtin_lt(evalRest(context, v))
 		case "<=":
 			return builtin_lteq(evalRest(context, v))
+		case "hash-map":
+			return builtin_hashmap(evalRest(context, v))
+		case "get":
+			return builtin_get(evalRest(context, v))
+		case "put":
+			return builtin_put(evalRest(context, v))
 		}
 
 		// bound functions

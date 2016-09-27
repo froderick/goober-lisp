@@ -374,6 +374,72 @@ func builtin_eq(vals []Value) Boolean {
 	return Boolean(true)
 }
 
+func builtin_lt(vals []Value) Boolean {
+
+	if len(vals) < 1 {
+		panic(fmt.Sprintf("< takes at least 1 parameter: %v", vals))
+	}
+
+	base := int(requireInt(vals[0], "arguments to '<' must be numbers"))
+	for _, i := range vals[1:] {
+		val := int(requireInt(i, "arguments to '<' must be numbers"))
+		if base >= val {
+			return Boolean(false)
+		}
+		base = val
+	}
+	return Boolean(true)
+}
+
+func builtin_lteq(vals []Value) Boolean {
+
+	if len(vals) < 1 {
+		panic(fmt.Sprintf("<= takes at least 1 parameter: %v", vals))
+	}
+
+	base := int(requireInt(vals[0], "arguments to '<=' must be numbers"))
+	for _, i := range vals[1:] {
+		val := int(requireInt(i, "arguments to '<=' must be numbers"))
+		if base > val {
+			return Boolean(false)
+		}
+		base = val
+	}
+	return Boolean(true)
+}
+
+func builtin_gt(vals []Value) Boolean {
+
+	if len(vals) < 1 {
+		panic(fmt.Sprintf("> takes at least 1 parameter: %v", vals))
+	}
+
+	base := int(requireInt(vals[0], "arguments to '>' must be numbers"))
+	for _, i := range vals[1:] {
+		val := int(requireInt(i, "arguments to '>' must be numbers"))
+		if base <= val {
+			return Boolean(false)
+		}
+	}
+	return Boolean(true)
+}
+
+func builtin_gteq(vals []Value) Boolean {
+
+	if len(vals) < 1 {
+		panic(fmt.Sprintf(">= takes at least 1 parameter: %v", vals))
+	}
+
+	base := int(requireInt(vals[0], "arguments to '>=' must be numbers"))
+	for _, i := range vals[1:] {
+		val := int(requireInt(i, "arguments to '>=' must be numbers"))
+		if base < val {
+			return Boolean(false)
+		}
+	}
+	return Boolean(true)
+}
+
 func evalRest(context *context, v Sexpr) []Value {
 	rest := make([]Value, 0, len(v)-1)
 	for _, item := range v[1:] {
@@ -435,6 +501,14 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return builtin_plus(evalRest(context, v))
 		case "=":
 			return builtin_eq(evalRest(context, v))
+		case ">":
+			return builtin_gt(evalRest(context, v))
+		case ">=":
+			return builtin_gteq(evalRest(context, v))
+		case "<":
+			return builtin_lt(evalRest(context, v))
+		case "<=":
+			return builtin_lteq(evalRest(context, v))
 		}
 
 		// bound functions

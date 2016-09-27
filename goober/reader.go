@@ -19,6 +19,7 @@ type Symbol string
 type Int int
 type Str string
 type Sexpr []Value
+type Keyword string
 
 func (v Nil) truthy() bool {
 	return false
@@ -84,9 +85,22 @@ func (v Sexpr) String() string {
 	return v.prn()
 }
 
+func (v Keyword) prn() string {
+	return ":" + string(v)
+}
+
+func (v Keyword) truthy() bool {
+	return true
+}
+
+func (v Keyword) String() string {
+	return v.prn()
+}
+
 // Split an s-expression string into tokens
 func tokenize(s string) []string {
 
+	s = strings.Replace(s, ",", "", -1)
 	s = strings.Replace(s, "(", " ( ", -1)
 	s = strings.Replace(s, ")", " ) ", -1)
 	s = strings.Replace(s, "'", " ' ", -1)
@@ -117,6 +131,8 @@ func parseAtom(s string) Value {
 	} else if len(s) > 1 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
 		i := s[1 : len(s)-1]
 		return Str(i)
+	} else if strings.HasPrefix(s, ":") {
+		return Keyword(s[1:])
 	} else if len(s) > 0 {
 		return Symbol(s)
 	} else {

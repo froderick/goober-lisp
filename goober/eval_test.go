@@ -24,9 +24,16 @@ func test_eval(s string) Value {
 
 // eval test data
 
+type xform func(Value) Value
+
 type testPair struct {
 	input    string
 	expected Value
+	xform    xform
+}
+
+func pair(input string, expected Value) testPair {
+	return testPair{input: input, expected: expected}
 }
 
 var tests = []testPair{
@@ -63,6 +70,11 @@ var tests = []testPair{
 				sexpr(Symbol("+"), Symbol("a"), Int(10)),
 			),
 		},
+		xform: func(v Value) Value { // empty out the context so the data structures match
+			fn := v.(fn)
+			fn.context = context{}
+			return fn
+		},
 	},
 	testPair{input: "((fn (a) (+ 1 2) (+ a 10)) 5)", expected: Int(15)},
 
@@ -84,11 +96,16 @@ var tests = []testPair{
 func TestEval(t *testing.T) {
 	for _, pair := range tests {
 		v := test_eval(pair.input)
+
+		if pair.xform != nil {
+			v = pair.xform(v)
+		}
+
 		if !reflect.DeepEqual(pair.expected, v) {
 			t.Error(
 				"For", pair.input,
-				"expected", pair.expected,
-				"got", v,
+				"expected", fmt.Sprintf("%v", pair.expected),
+				"got", fmt.Sprintf("%v", v),
 			)
 		}
 	}

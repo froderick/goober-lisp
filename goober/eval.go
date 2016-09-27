@@ -19,7 +19,22 @@ func (v fn) truthy() bool {
 }
 
 func (v fn) prn() string {
-	return fmt.Sprintf("#fn[%v]", v)
+
+	args := make([]string, 0, len(v.args))
+	for _, arg := range v.args {
+		args = append(args, arg.prn())
+	}
+
+	exprs := make([]string, 0, len(v.exprs))
+	for _, expr := range v.exprs {
+		exprs = append(exprs, expr.prn())
+	}
+
+	return "(fn (" + strings.Join(args, " ") + ") " + strings.Join(args, " ") + ")"
+}
+
+func (v fn) String() string {
+	return v.prn()
 }
 
 func (v recur) truthy() bool {

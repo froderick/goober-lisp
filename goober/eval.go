@@ -425,6 +425,26 @@ func builtin_put(vals []Value) Value {
 	return HashMap(copy)
 }
 
+func builtin_seq(vals []Value) Value {
+
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("seq takes 1 parameter: %v", vals))
+	}
+
+	switch val := vals[0].(type) {
+	case HashMap:
+		seq := make([]Value, 0, len(val)*2)
+		for k, v := range val {
+			seq = append(seq, Sexpr([]Value{k, v}))
+		}
+		return Sexpr(seq)
+	case Sexpr:
+		return val
+	default:
+		panic(fmt.Sprintf("not seq-able: %v", val))
+	}
+}
+
 func builtin_plus(vals []Value) Int {
 	var base int = 0
 	for i := range vals {
@@ -591,6 +611,8 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return builtin_get(evalRest(context, v))
 		case "put":
 			return builtin_put(evalRest(context, v))
+		case "seq":
+			return builtin_seq(evalRest(context, v))
 		}
 
 		// bound functions

@@ -332,12 +332,11 @@ func builtin_first(vals []Value) Value {
 		panic(fmt.Sprintf("first takes only 1 parameter: %v", vals))
 	}
 
-	list := requireSexpr(vals[0], "first takes a list")
-
-	if len(list) == 0 {
+	seq := seq(vals[0])
+	if len(seq) == 0 {
 		return Nil{}
 	} else {
-		return list[0]
+		return seq[0]
 	}
 }
 
@@ -372,6 +371,8 @@ func builtin_cons(vals []Value) Value {
 	return Sexpr(newList)
 }
 
+// TODO NEXT: keywords, then loading a standard library file, then macros?
+
 type HashMap map[Value]Value
 
 func (v HashMap) truthy() bool {
@@ -380,16 +381,17 @@ func (v HashMap) truthy() bool {
 
 func (v HashMap) prn() string {
 
-	kvs := make([]string, 0, len(v)+2)
-	kvs = append(kvs, "(hash-map")
-	for k, val := range v {
-		kvs = append(kvs, k.prn(), val.prn())
+	var items string
+
+	if len(v) > 0 {
+		kvs := make([]string, 0, len(v)+2)
+		for k, val := range v {
+			kvs = append(kvs, k.prn(), val.prn())
+		}
+		items = " " + strings.Join(kvs, " ")
 	}
-	kvs = append(kvs, ")")
 
-	s := strings.Join(kvs, " ")
-
-	return s
+	return "(hash-map" + items + ")"
 }
 
 func (v HashMap) String() string {
@@ -440,13 +442,8 @@ func builtin_put(vals []Value) Value {
 	return HashMap(copy)
 }
 
-func builtin_seq(vals []Value) Value {
-
-	if len(vals) != 1 {
-		panic(fmt.Sprintf("seq takes 1 parameter: %v", vals))
-	}
-
-	switch val := vals[0].(type) {
+func seq(val Value) Sexpr {
+	switch val := val.(type) {
 	case HashMap:
 		seq := make([]Value, 0, len(val)*2)
 		for k, v := range val {
@@ -458,6 +455,15 @@ func builtin_seq(vals []Value) Value {
 	default:
 		panic(fmt.Sprintf("not seq-able: %v", val))
 	}
+}
+
+func builtin_seq(vals []Value) Value {
+
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("seq takes 1 parameter: %v", vals))
+	}
+
+	return seq(vals[0])
 }
 
 func builtin_plus(vals []Value) Int {

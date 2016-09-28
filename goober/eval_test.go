@@ -18,8 +18,8 @@ func test_eval_ns(ns *Ns, s string) Value {
 }
 
 func test_eval(s string) Value {
-	ns := NewNs("user")
-	return test_eval_ns(&ns, s)
+	ns := DefaultNs()
+	return test_eval_ns(ns, s)
 }
 
 // eval test data
@@ -81,6 +81,7 @@ var tests = []testPair{
 	testPair{input: "'y", expected: Symbol("y")},
 	testPair{input: "'(1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
 	testPair{input: "(quote (1 2 3))", expected: sexpr(Int(1), Int(2), Int(3))},
+	testPair{input: "(not 'x)", expected: Boolean(false)},
 
 	testPair{input: "(do (+ 1 2 3) 5)", expected: Int(5)},
 

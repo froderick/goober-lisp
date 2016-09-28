@@ -371,7 +371,7 @@ func builtin_cons(vals []Value) Value {
 	return Sexpr(newList)
 }
 
-// TODO NEXT: keywords, then loading a standard library file, then macros?
+// TODO NEXT: macros?
 
 type HashMap map[Value]Value
 

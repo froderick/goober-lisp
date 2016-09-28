@@ -22,13 +22,14 @@ func handle(ns *goober.Ns, input string) {
 	}()
 
 	if !isEmpty(input) {
-		value := goober.Read(input)
-		fmt.Printf("%v\n", goober.Eval(ns, value))
+		for _, val := range goober.Read(input) {
+			fmt.Printf("%v\n", goober.Eval(ns, val))
+		}
 	}
 }
 
 func main() {
-	ns := goober.NewNs("user")
+	ns := goober.DefaultNs()
 	for {
 
 		reader := bufio.NewReader(os.Stdin)
@@ -39,6 +40,6 @@ func main() {
 			break
 		}
 
-		handle(&ns, input)
+		handle(ns, input)
 	}
 }

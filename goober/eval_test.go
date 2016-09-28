@@ -13,7 +13,7 @@ func test_eval_ns(ns *Ns, s string) Value {
 			fmt.Printf("%s: %s", e, debug.Stack())
 		}
 	}()
-	sexpr := Read(s)
+	sexpr := Read(s)[0]
 	return Eval(ns, sexpr)
 }
 

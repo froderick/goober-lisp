@@ -92,6 +92,16 @@ var tests = []testPair{
 	testPair{input: "(rest '(1 2 3))", expected: sexpr(Int(2), Int(3))},
 	testPair{input: "(cons 100 '())", expected: sexpr(Int(100))},
 	testPair{input: "(+ 1 2 3)", expected: Int(6)},
+
+	// keywords as basic functions
+
+	testPair{input: "(:a (hash-map :a :B))", expected: Keyword("B")},
+
+	// keywords as higher-order functions
+	testPair{
+		input:    "(map :a (list (hash-map :a \"ONE\") (hash-map :a \"TWO\")))",
+		expected: sexpr(Str("ONE"), Str("TWO")),
+	},
 }
 
 func TestEval(t *testing.T) {

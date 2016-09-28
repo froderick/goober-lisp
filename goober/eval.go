@@ -161,6 +161,15 @@ func requireSexpr(v Value, msg string) Sexpr {
 	}
 }
 
+func requireKeyword(v Value, msg string) Keyword {
+	switch x := v.(type) {
+	case Keyword:
+		return x
+	default:
+		panic(fmt.Sprintf(msg+": %v", v))
+	}
+}
+
 func requireHashMap(v Value, msg string) HashMap {
 	switch x := v.(type) {
 	case HashMap:
@@ -299,6 +308,21 @@ func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 			return result
 		}
 	}
+}
+
+func special_keyword_call(context *context, k Keyword, args []Value) Value {
+
+	if len(args) != 1 {
+		panic(fmt.Sprintf("a keyword as a function takes only one argument: %v", args))
+	}
+
+	replacement := Sexpr([]Value{
+		Symbol("get"),
+		args[0],
+		k,
+	})
+
+	return evalSexpr(context, replacement)
 }
 
 func special_do(context *context, vals []Value) Value {
@@ -612,18 +636,7 @@ func evalSexpr(context *context, v Sexpr) Value {
 		return special_fn_call("anonymous", first, context, evalRest(context, v))
 
 	case Keyword:
-
-		if len(v) != 2 {
-			panic(fmt.Sprintf("a keyword as a function takes only one argument: %v", v))
-		}
-
-		replacement := Sexpr([]Value{
-			Symbol("get"),
-			v[1],
-			v[0],
-		})
-
-		return evalSexpr(context, replacement)
+		return special_keyword_call(context, first, evalRest(context, v))
 
 	case Symbol:
 
@@ -660,20 +673,7 @@ func evalSexpr(context *context, v Sexpr) Value {
 		case builtin:
 			return resolved(evalRest(context, v))
 		case Keyword:
-
-			// TODO: this is duplicated
-
-			if len(v) != 2 {
-				panic(fmt.Sprintf("a keyword as a function takes only one argument: %v", v))
-			}
-
-			replacement := Sexpr([]Value{
-				Symbol("get"),
-				v[1],
-				resolved,
-			})
-
-			return evalSexpr(context, replacement)
+			return special_keyword_call(context, resolved, evalRest(context, v))
 
 		default:
 

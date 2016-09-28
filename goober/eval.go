@@ -372,6 +372,24 @@ func builtin_cons(vals []Value) Value {
 	return Sexpr(newList)
 }
 
+func builtin_count(vals []Value) Value {
+
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("count takes only 1 parameters: %v", vals))
+	}
+
+	x := vals[0]
+
+	switch x := x.(type) {
+	case Sexpr:
+		return Int(len(x))
+	case HashMap:
+		return Int(len(x))
+	default:
+		panic(fmt.Sprintf("count requires a collection: %v", vals))
+	}
+}
+
 func builtin_println(vals []Value) Value {
 	newList := make([]string, 0, len(vals))
 	for _, v := range vals {
@@ -621,8 +639,15 @@ func evalSexpr(context *context, v Sexpr) Value {
 		// bound functions
 
 		resolved := context.get(first)
-		fn := requireFn(resolved, "symbol must be bound to a function")
-		return special_fn_call(string(first), fn, context, evalRest(context, v))
+
+		switch resolved := resolved.(type) {
+		case fn:
+			return special_fn_call(string(first), resolved, context, evalRest(context, v))
+		case builtin:
+			return resolved(evalRest(context, v))
+		default:
+			panic(fmt.Sprintf("symbol must be bound to a function: %v", resolved))
+		}
 	default:
 		panic(fmt.Sprintf("not a valid function: %", first))
 	}
@@ -659,6 +684,7 @@ var builtinMap = map[string]builtin{
 	"put":      builtin_put,
 	"seq":      builtin_seq,
 	"println":  builtin_println,
+	"count":    builtin_count,
 }
 
 // Evaluates a Value data structure as code.

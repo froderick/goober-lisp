@@ -108,6 +108,10 @@ func (c context) get(name Symbol) Value {
 		return v
 	}
 
+	if b, ok := builtinMap[string(s)]; ok {
+		return b
+	}
+
 	panic("cannot find a binding or var with this symbol name: " + name)
 }
 
@@ -472,7 +476,7 @@ func builtin_seq(vals []Value) Value {
 	return seq(vals[0])
 }
 
-func builtin_plus(vals []Value) Int {
+func builtin_plus(vals []Value) Value {
 	var base int = 0
 	for i := range vals {
 		val := requireInt(vals[i], "arguments to '+' must be numbers")
@@ -481,7 +485,7 @@ func builtin_plus(vals []Value) Int {
 	return Int(base)
 }
 
-func builtin_eq(vals []Value) Boolean {
+func builtin_eq(vals []Value) Value {
 
 	if len(vals) < 1 {
 		panic(fmt.Sprintf("= takes at least 1 parameter: %v", vals))
@@ -497,7 +501,7 @@ func builtin_eq(vals []Value) Boolean {
 	return Boolean(true)
 }
 
-func builtin_lt(vals []Value) Boolean {
+func builtin_lt(vals []Value) Value {
 
 	if len(vals) < 1 {
 		panic(fmt.Sprintf("< takes at least 1 parameter: %v", vals))
@@ -514,7 +518,7 @@ func builtin_lt(vals []Value) Boolean {
 	return Boolean(true)
 }
 
-func builtin_lteq(vals []Value) Boolean {
+func builtin_lteq(vals []Value) Value {
 
 	if len(vals) < 1 {
 		panic(fmt.Sprintf("<= takes at least 1 parameter: %v", vals))
@@ -531,7 +535,7 @@ func builtin_lteq(vals []Value) Boolean {
 	return Boolean(true)
 }
 
-func builtin_gt(vals []Value) Boolean {
+func builtin_gt(vals []Value) Value {
 
 	if len(vals) < 1 {
 		panic(fmt.Sprintf("> takes at least 1 parameter: %v", vals))
@@ -547,7 +551,7 @@ func builtin_gt(vals []Value) Boolean {
 	return Boolean(true)
 }
 
-func builtin_gteq(vals []Value) Boolean {
+func builtin_gteq(vals []Value) Value {
 
 	if len(vals) < 1 {
 		panic(fmt.Sprintf(">= takes at least 1 parameter: %v", vals))
@@ -595,8 +599,6 @@ func evalSexpr(context *context, v Sexpr) Value {
 
 		rawArgs := v[1:]
 
-		// TODO: by putting these into a map of name -> fn(context, args)
-		// we would make these resolvable as symbols as well as functions
 		switch first {
 		case "def":
 			return special_def(context, rawArgs)
@@ -610,38 +612,10 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return special_quote(rawArgs)
 		case "do":
 			return special_do(context, rawArgs)
-		case "recur":
-			return builtin_recur(evalRest(context, v))
-		case "list":
-			return builtin_list(evalRest(context, v))
-		case "first":
-			return builtin_first(evalRest(context, v))
-		case "rest":
-			return builtin_rest(evalRest(context, v))
-		case "cons":
-			return builtin_cons(evalRest(context, v))
-		case "+":
-			return builtin_plus(evalRest(context, v))
-		case "=":
-			return builtin_eq(evalRest(context, v))
-		case ">":
-			return builtin_gt(evalRest(context, v))
-		case ">=":
-			return builtin_gteq(evalRest(context, v))
-		case "<":
-			return builtin_lt(evalRest(context, v))
-		case "<=":
-			return builtin_lteq(evalRest(context, v))
-		case "hash-map":
-			return builtin_hashmap(evalRest(context, v))
-		case "get":
-			return builtin_get(evalRest(context, v))
-		case "put":
-			return builtin_put(evalRest(context, v))
-		case "seq":
-			return builtin_seq(evalRest(context, v))
-		case "println":
-			return builtin_println(evalRest(context, v))
+		}
+
+		if builtin, ok := builtinMap[string(first)]; ok {
+			return builtin(evalRest(context, v))
 		}
 
 		// bound functions
@@ -652,6 +626,39 @@ func evalSexpr(context *context, v Sexpr) Value {
 	default:
 		panic(fmt.Sprintf("not a valid function: %", first))
 	}
+}
+
+type builtin func([]Value) Value
+
+func (v builtin) truthy() bool {
+	return true
+}
+
+func (v builtin) prn() string {
+	return "<builtin>"
+}
+
+func (v builtin) String() string {
+	return v.prn()
+}
+
+var builtinMap = map[string]builtin{
+	"recur":    builtin_recur,
+	"list":     builtin_list,
+	"first":    builtin_first,
+	"rest":     builtin_rest,
+	"cons":     builtin_cons,
+	"+":        builtin_plus,
+	"=":        builtin_eq,
+	">":        builtin_gt,
+	">=":       builtin_gteq,
+	"<":        builtin_lt,
+	"<=":       builtin_lteq,
+	"hash-map": builtin_hashmap,
+	"get":      builtin_get,
+	"put":      builtin_put,
+	"seq":      builtin_seq,
+	"println":  builtin_println,
 }
 
 // Evaluates a Value data structure as code.

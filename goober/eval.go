@@ -371,7 +371,16 @@ func builtin_cons(vals []Value) Value {
 	return Sexpr(newList)
 }
 
-// TODO NEXT: macros?
+func builtin_println(vals []Value) Value {
+	newList := make([]string, 0, len(vals))
+	for _, v := range vals {
+		newList = append(newList, v.prn())
+	}
+	fmt.Println(strings.Join(newList, " "))
+	return Nil{}
+}
+
+// TODO NEXT: run in shell script, macros?
 
 type HashMap map[Value]Value
 
@@ -634,6 +643,8 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return builtin_put(evalRest(context, v))
 		case "seq":
 			return builtin_seq(evalRest(context, v))
+		case "println":
+			return builtin_println(evalRest(context, v))
 		}
 
 		// bound functions

@@ -448,9 +448,9 @@ func builtin_get(vals []Value) Value {
 		panic(fmt.Sprintf("get takes 2 parameters: %v", vals))
 	}
 
-	m := requireHashMap(vals[1], "second argument must be a map")
+	m := requireHashMap(vals[0], "first argument must be a map")
 
-	return m[vals[0]]
+	return m[vals[1]]
 }
 
 func builtin_put(vals []Value) Value {
@@ -610,6 +610,20 @@ func evalSexpr(context *context, v Sexpr) Value {
 
 	case fn:
 		return special_fn_call("anonymous", first, context, evalRest(context, v))
+
+	case Keyword:
+
+		if len(v) != 2 {
+			panic(fmt.Sprintf("a keyword as a function takes only one argument: %v", v))
+		}
+
+		replacement := Sexpr([]Value{
+			Symbol("get"),
+			v[1],
+			v[0],
+		})
+
+		return evalSexpr(context, replacement)
 
 	case Symbol:
 

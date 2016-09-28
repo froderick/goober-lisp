@@ -19,31 +19,35 @@ func sym(s string) Symbol {
 	return Symbol(s)
 }
 
+func readOne(s string) Value {
+	return Read(s)[0]
+}
+
 func TestReadBoolean(t *testing.T) {
-	assertEqual(t, Read("true"), Boolean(true))
-	assertEqual(t, Read("false"), Boolean(false))
+	assertEqual(t, readOne("true"), Boolean(true))
+	assertEqual(t, readOne("false"), Boolean(false))
 }
 
 func TestReadSymbol(t *testing.T) {
-	assertEqual(t, Read("+"), Symbol("+"))
+	assertEqual(t, readOne("+"), readOne("+"))
 }
 
 func TestReadInt(t *testing.T) {
-	assertEqual(t, Read("100"), Int(100))
+	assertEqual(t, readOne("100"), Int(100))
 }
 
 func TestReadStr(t *testing.T) {
-	assertEqual(t, Read("\"A\""), Str("A"))
+	assertEqual(t, readOne("\"A\""), Str("A"))
 }
 
 func TestReadSexpr(t *testing.T) {
-	assertEqual(t, Read("(+ 1 2 3)"), sexpr(sym("+"), Int(1), Int(2), Int(3))) // basic
-	assertEqual(t, Read("(x (y))"), sexpr(sym("x"), sexpr(sym("y"))))          // nesting
+	assertEqual(t, readOne("(+ 1 2 3)"), sexpr(sym("+"), Int(1), Int(2), Int(3))) // basic
+	assertEqual(t, readOne("(x (y))"), sexpr(sym("x"), sexpr(sym("y"))))          // nesting
 }
 
 func TestReadQuote(t *testing.T) {
-	assertEqual(t, Read("'(foo)"), sexpr(sym("quote"), sexpr(sym("foo"))))
-	assertEqual(t, Read("'f"), sexpr(sym("quote"), (sym("f"))))
+	assertEqual(t, readOne("'(foo)"), sexpr(sym("quote"), sexpr(sym("foo"))))
+	assertEqual(t, readOne("'f"), sexpr(sym("quote"), (sym("f"))))
 }
 
 func doPop(ts TokenStream) string {

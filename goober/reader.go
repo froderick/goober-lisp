@@ -210,10 +210,19 @@ func NewTokenStream(tokens ...string) TokenStream {
 	return &stringStream{tokens: tokens}
 }
 
-// The reader function to use when you want to read an s-expression string
-// into Value data structures.
-func Read(s string) Value {
+// The reader function to use when you want to read series of s-expressions in
+// a string into Value data structures.
+func Read(s string) []Value {
 	tokens := tokenize(s)
 	ts := NewTokenStream(tokens...)
-	return Parse(ts)
+
+	vals := make([]Value, 0)
+	for {
+		if _, err := ts.Peek(); err != nil {
+			break // out of tokens
+		}
+		vals = append(vals, Parse(ts))
+	}
+
+	return vals
 }

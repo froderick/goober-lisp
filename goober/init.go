@@ -23,7 +23,7 @@ func init() {
 	}
 
 	for _, val := range Read(string(data)) {
-		fmt.Printf("%v\n", Eval(&world.defaultNs, val))
+		Eval(&world.defaultNs, val)
 	}
 }
 

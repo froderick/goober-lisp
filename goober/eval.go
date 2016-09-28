@@ -256,6 +256,10 @@ func special_if(context *context, vals []Value) Value {
 	}
 }
 
+type IFn interface {
+	invoke(name string, context *context, args []Value) Value
+}
+
 func special_fn(context *context, vals []Value) fn {
 
 	if len(vals) < 2 {
@@ -659,11 +663,13 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return special_do(context, rawArgs)
 		}
 
+		// builtin functions
+
 		if builtin, ok := builtinMap[string(first)]; ok {
 			return builtin(evalRest(context, v))
 		}
 
-		// bound functions
+		// functions bound to symbols, vars, or things we permit to be used as functions (keywords)
 
 		resolved := context.get(first)
 

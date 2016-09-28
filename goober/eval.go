@@ -263,13 +263,15 @@ func special_fn(context *context, vals []Value) fn {
 
 func special_fn_call_inner(name string, fn *fn, context *context, vals []Value) Value {
 
+	//fmt.Printf("calling: %v(%v)\n", name, vals)
+
 	if len(vals) < len(fn.args) {
 		panic(fmt.Sprintf("%v takes %v parameters: %v", name, len(fn.args), vals))
 	}
 
 	for i, bindingname := range fn.args {
 		bindingExpr := vals[i]
-		bindingValue := eval(context, bindingExpr)
+		bindingValue := bindingExpr
 		fn.context.push(bindingname, bindingValue)
 		defer fn.context.pop()
 	}
@@ -658,17 +660,23 @@ func eval(context *context, v Value) Value {
 	//fmt.Printf("eval() input: %v\n", v)
 	//fmt.Printf("eval() bindings: %v\n", context.bindings)
 
+	var result Value
+
 	switch v := v.(type) {
 	case Sexpr:
-		return evalSexpr(context, v)
+		result = evalSexpr(context, v)
 	case Symbol:
 		if "nil" == string(v) {
 			return Nil{}
 		}
-		return context.get(v)
+		result = context.get(v)
 	default:
-		return v
+		result = v
 	}
+
+	//fmt.Printf("eval() output: %v\n", result)
+
+	return result
 }
 
 func Eval(ns *Ns, v Value) Value {

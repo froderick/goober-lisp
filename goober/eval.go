@@ -197,6 +197,7 @@ func special_let(context *context, vals []Value) Value {
 		val := eval(context, expr)
 
 		context.push(sym, val)
+		defer context.pop()
 
 		pushes++
 	}
@@ -207,12 +208,6 @@ func special_let(context *context, vals []Value) Value {
 	for i := 1; i < len(vals); i++ {
 		expr := vals[i]
 		result = eval(context, expr)
-	}
-
-	// pop off all the bindings
-
-	for i := 0; i < pushes; i++ {
-		context.pop() // TODO: these cleanups should happen even if evaulation fails
 	}
 
 	// return the result of the last statement in the let block
@@ -380,7 +375,7 @@ func builtin_println(vals []Value) Value {
 	return Nil{}
 }
 
-// TODO NEXT: run in shell script, macros?
+// TODO NEXT: macros?
 
 type HashMap map[Value]Value
 

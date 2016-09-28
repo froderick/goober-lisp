@@ -659,6 +659,20 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return special_fn_call(string(first), resolved, context, evalRest(context, v))
 		case builtin:
 			return resolved(evalRest(context, v))
+		case Keyword:
+
+			if len(v) != 2 {
+				panic(fmt.Sprintf("a keyword as a function takes only one argument: %v", v))
+			}
+
+			replacement := Sexpr([]Value{
+				Symbol("get"),
+				v[1],
+				resolved,
+			})
+
+			return evalSexpr(context, replacement)
+
 		default:
 
 			// TODO: consider defining IFn interface so that we can return

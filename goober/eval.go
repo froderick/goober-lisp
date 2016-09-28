@@ -661,6 +661,8 @@ func evalSexpr(context *context, v Sexpr) Value {
 			return resolved(evalRest(context, v))
 		case Keyword:
 
+			// TODO: this is duplicated
+
 			if len(v) != 2 {
 				panic(fmt.Sprintf("a keyword as a function takes only one argument: %v", v))
 			}

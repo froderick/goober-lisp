@@ -1,1 +1,1 @@
-(def working "working!")
+(def not (fn (x) (if x false true)))

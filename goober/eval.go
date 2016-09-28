@@ -660,6 +660,11 @@ func evalSexpr(context *context, v Sexpr) Value {
 		case builtin:
 			return resolved(evalRest(context, v))
 		default:
+
+			// TODO: consider defining IFn interface so that we can return
+			// different types of things that support being invoked as a
+			// first-class function here (like :keywords)
+
 			panic(fmt.Sprintf("symbol must be bound to a function: %v", resolved))
 		}
 	default:

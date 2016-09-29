@@ -339,7 +339,14 @@ func special_fn_call_inner(name string, fn *fn, context *context, vals []Value) 
 
 	if fn.args.useRest {
 		bindingName := fn.args.rest
-		bindingValue := Sexpr(rest)
+
+		var bindingValue Value
+		if len(rest) == 0 {
+			bindingValue = Nil{}
+		} else {
+			bindingValue = Sexpr(rest)
+		}
+
 		fn.context.push(bindingName, bindingValue)
 		defer fn.context.pop()
 	}

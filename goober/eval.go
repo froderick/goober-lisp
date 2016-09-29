@@ -7,6 +7,7 @@ import "strings"
 // incorporate functions as value types
 
 type fn struct {
+	name    string
 	args    []Symbol
 	exprs   []Value
 	context context
@@ -30,7 +31,7 @@ func (v fn) prn() string {
 		exprs = append(exprs, expr.prn())
 	}
 
-	return "(fn (" + strings.Join(args, " ") + ") " + strings.Join(args, " ") + ")"
+	return "(fn (" + strings.Join(args, " ") + ") " + strings.Join(exprs, " ") + ")"
 }
 
 func (v fn) String() string {
@@ -109,7 +110,7 @@ func (c context) get(name Symbol) Value {
 	}
 
 	if b, ok := builtinMap[string(s)]; ok {
-		return b
+		return b.(Value)
 	}
 
 	panic("cannot find a binding or var with this symbol name: " + name)
@@ -256,11 +257,7 @@ func special_if(context *context, vals []Value) Value {
 	}
 }
 
-type IFn interface {
-	invoke(name string, context *context, args []Value) Value
-}
-
-func special_fn(context *context, vals []Value) fn {
+func special_fn(context *context, vals []Value) Value {
 
 	if len(vals) < 2 {
 		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
@@ -280,10 +277,10 @@ func special_fn(context *context, vals []Value) fn {
 
 func special_fn_call_inner(name string, fn *fn, context *context, vals []Value) Value {
 
-	//fmt.Printf("calling: %v(%v)\n", name, vals)
+	//fmt.Printf("calling %v with args %v\n", fn, Sexpr(vals))
 
 	if len(vals) < len(fn.args) {
-		panic(fmt.Sprintf("%v takes %v parameters: %v", name, len(fn.args), vals))
+		panic(fmt.Sprintf("%v takes %v parameters: called %v with args %v", name, len(fn.args), fn, vals))
 	}
 
 	for i, bindingname := range fn.args {
@@ -297,6 +294,8 @@ func special_fn_call_inner(name string, fn *fn, context *context, vals []Value) 
 	for _, expr := range fn.exprs {
 		result = eval(&fn.context, expr)
 	}
+
+	//fmt.Printf("DONE calling %v with args %v => %v\n", fn, Sexpr(vals), result)
 
 	return result
 }
@@ -312,6 +311,7 @@ func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 			return result
 		}
 	}
+
 }
 
 func special_keyword_call(context *context, k Keyword, args []Value) Value {
@@ -326,7 +326,7 @@ func special_keyword_call(context *context, k Keyword, args []Value) Value {
 		k,
 	})
 
-	return evalSexpr(context, replacement)
+	return eval(context, replacement)
 }
 
 func special_do(context *context, vals []Value) Value {
@@ -339,7 +339,7 @@ func special_do(context *context, vals []Value) Value {
 	return result
 }
 
-func special_quote(vals []Value) Value {
+func special_quote(context *context, vals []Value) Value {
 	if len(vals) != 1 {
 		panic(fmt.Sprintf("quote takes only 1 parameter: %v", vals))
 	}
@@ -347,12 +347,9 @@ func special_quote(vals []Value) Value {
 	return param
 }
 
-func special_recur(vals []Value) Value {
-	return recur(vals)
+func special_recur(context *context, vals []Value) Value {
+	return recur(evalAll(context, vals))
 }
-
-// TODO NEXT: macros?
-// TODO: sort out IFn
 
 func evalRest(context *context, v Sexpr) []Value {
 	rest := make([]Value, 0, len(v)-1)
@@ -363,74 +360,96 @@ func evalRest(context *context, v Sexpr) []Value {
 	return rest
 }
 
-func evalSexpr(context *context, v Sexpr) Value {
+// TODO NEXT: macros?
+// TODO: sort out IFn
 
-	if len(v) == 0 {
-		return v
+type IFn interface {
+	Name() string
+	Invoke(context *context, args []Value) Value
+}
+
+func evalAll(context *context, vals []Value) []Value {
+	evaluated := make([]Value, 0, len(vals))
+	for _, val := range vals {
+		evaluated = append(evaluated, eval(context, val))
 	}
+	return evaluated
+}
 
-	switch first := v[0].(type) {
+func (f fn) Name() string {
+	return f.name
+}
 
-	case Sexpr:
-		resolved := make([]Value, 0)
-		resolved = append(resolved, eval(context, first))
-		resolved = append(resolved, v[1:]...)
-		return eval(context, Sexpr(resolved))
+func (f fn) Invoke(context *context, args []Value) Value {
+	var name string
+	if f.name == "" {
+		name = "#<anonymous>"
+	} else {
+		name = f.name
+	}
+	return special_fn_call(name, f, context, evalAll(context, args))
+}
 
-	case fn:
-		return special_fn_call("anonymous", first, context, evalRest(context, v))
+func (f Keyword) Name() string {
+	return ":" + string(f)
+}
 
-	case Keyword:
-		return special_keyword_call(context, first, evalRest(context, v))
+func (f Keyword) Invoke(context *context, args []Value) Value {
+	return special_keyword_call(context, f, evalAll(context, args))
+}
 
+type special_f func(*context, []Value) Value
+
+type special struct {
+	name string
+	f    special_f
+}
+
+func (f special) Name() string {
+	return f.name
+}
+
+func (f special) Invoke(context *context, args []Value) Value {
+	return f.f(context, args)
+}
+
+func makeSpecial(name string, f func(*context, []Value) Value) IFn {
+	return special{name: name, f: special_f(f)}
+}
+
+func getIFn(context *context, v Value) IFn {
+
+	switch first := v.(type) {
+	case IFn:
+		return first
 	case Symbol:
 
-		// special functions
-
-		rawArgs := v[1:]
-
-		switch first {
+		switch first { // special functions
 		case "def":
-			return special_def(context, rawArgs)
+			return makeSpecial("def", special_def)
 		case "let":
-			return special_let(context, rawArgs)
+			return makeSpecial("let", special_let)
 		case "if":
-			return special_if(context, rawArgs)
+			return makeSpecial("if", special_if)
 		case "fn":
-			return special_fn(context, rawArgs)
+			return makeSpecial("fn", special_fn)
 		case "quote":
-			return special_quote(rawArgs)
+			return makeSpecial("quote", special_quote)
 		case "do":
-			return special_do(context, rawArgs)
+			return makeSpecial("do", special_do)
 		case "recur":
-			return special_recur(evalRest(context, v))
+			return makeSpecial("recur", special_recur)
 		}
 
-		// builtin functions
-
-		if builtin, ok := builtinMap[string(first)]; ok {
-			return builtin(evalRest(context, v))
+		if builtin, ok := builtinMap[string(first)]; ok { // builtin functions
+			return builtin
 		}
 
-		// functions bound to symbols, vars, or things we permit to be used as functions (keywords)
-
-		resolved := context.get(first)
-
-		switch resolved := resolved.(type) {
-		case fn:
-			return special_fn_call(string(first), resolved, context, evalRest(context, v))
-		case builtin:
-			return resolved(evalRest(context, v))
-		case Keyword:
-			return special_keyword_call(context, resolved, evalRest(context, v))
-
-		default:
-
-			// TODO: consider defining IFn interface so that we can return
-			// different types of things that support being invoked as a
-			// first-class function here (like :keywords)
-
-			panic(fmt.Sprintf("symbol must be bound to a function: %v", resolved))
+		resolved := context.get(first) // IFn's bound to symbols, vars
+		if f, ok := resolved.(IFn); ok {
+			return f
+		} else {
+			panic(fmt.Sprintf("symbol '%v' is not bound to an IFn: %v", first, resolved))
 		}
 	default:
 		panic(fmt.Sprintf("not a valid function: %", first))
@@ -447,12 +466,28 @@ func eval(context *context, v Value) Value {
 
 	switch v := v.(type) {
 	case Sexpr:
-		result = evalSexpr(context, v)
+
+		if len(v) == 0 {
+			return v
+		}
+
+		first := v[0]
+		if sexpr, ok := first.(Sexpr); ok {
+			resolved := make([]Value, 0)
+			resolved = append(resolved, eval(context, sexpr))
+			resolved = append(resolved, v[1:]...)
+			return eval(context, Sexpr(resolved))
+		} else {
+			f := getIFn(context, first)
+			result = f.Invoke(context, v[1:])
+		}
+
 	case Symbol:
 		if "nil" == string(v) {
 			return Nil{}
 		}
 		result = context.get(v)
+
 	default:
 		result = v
 	}

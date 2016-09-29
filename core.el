@@ -25,3 +25,5 @@
           mapped (map-inner (seq coll) (list)))
       (reverse mapped))))
 
+(defmacro when (test & rest) 
+  (if test (cons 'do rest)))

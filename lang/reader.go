@@ -1,101 +1,9 @@
-package goober
+package lang
 
 import "strconv"
 import "strings"
 import "errors"
-
-// Defines the basic union of types that can be used
-// as parameters or return values.
-type Value interface {
-	truthy() bool
-	prn() string
-}
-
-// incorporate the reader data structures as values
-
-type Nil struct{}
-type Boolean bool
-type Symbol string
-type Int int
-type Str string
-type Sexpr []Value
-type Keyword string
-
-func (v Nil) truthy() bool {
-	return false
-}
-
-func (v Nil) prn() string {
-	return "nil"
-}
-
-func (v Nil) String() string {
-	return v.prn()
-}
-
-func (v Boolean) truthy() bool {
-	return bool(v)
-}
-
-func (v Boolean) prn() string {
-	return strconv.FormatBool(bool(v))
-}
-
-func (v Symbol) truthy() bool {
-	return true
-}
-
-func (v Symbol) prn() string {
-	return string(v)
-}
-
-func (v Int) truthy() bool {
-	return int(v) != 0
-}
-
-func (v Int) prn() string {
-	return strconv.Itoa(int(v))
-}
-
-func (v Str) truthy() bool {
-	trimmed := strings.TrimSpace(string(v))
-	return len(trimmed) > 0
-}
-
-func (v Str) prn() string {
-	return string(v)
-}
-
-func (v Sexpr) truthy() bool {
-	return true
-}
-
-func (v Sexpr) prn() string {
-	list := []Value(v)
-
-	elements := make([]string, 0, len(list))
-	for _, i := range list {
-		elements = append(elements, i.prn())
-	}
-
-	return "(" + strings.Join(elements, " ") + ")"
-}
-
-func (v Sexpr) String() string {
-	return v.prn()
-}
-
-func (v Keyword) prn() string {
-	return ":" + string(v)
-}
-
-func (v Keyword) truthy() bool {
-	return true
-}
-
-func (v Keyword) String() string {
-	return v.prn()
-}
+import "goober-lisp/base"
 
 // Split an s-expression string into tokens
 func tokenize(s string) []string {
@@ -117,24 +25,24 @@ func tokenize(s string) []string {
 }
 
 // Parse an s-expression value as an atom, or return nil if no atom can be derived
-func parseAtom(s string) Value {
+func parseAtom(s string) base.Value {
 
 	if "true" == s {
-		return Boolean(true)
+		return base.Boolean(true)
 	}
 	if "false" == s {
-		return Boolean(false)
+		return base.Boolean(false)
 	}
 
 	if ival, err := strconv.Atoi(s); err == nil {
-		return Int(ival)
+		return base.Int(ival)
 	} else if len(s) > 1 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
 		i := s[1 : len(s)-1]
-		return Str(i)
+		return base.Str(i)
 	} else if strings.HasPrefix(s, ":") {
-		return Keyword(s[1:])
+		return base.Keyword(s[1:])
 	} else if len(s) > 0 {
-		return Symbol(s)
+		return base.Symbol(s)
 	} else {
 		panic("not a valid atom: " + s)
 	}
@@ -150,8 +58,8 @@ type TokenStream interface {
 
 // The inner version of parse, takes a pointer to a slice of tokens.
 // The slice is modified as the parsing logic consumes the tokens.
-// Returns a pointer to a Value.
-func Parse(ts TokenStream) Value {
+// Returns a pointer to a base.Value.
+func Parse(ts TokenStream) base.Value {
 
 	token, err := ts.Pop()
 	if err != nil {
@@ -159,11 +67,11 @@ func Parse(ts TokenStream) Value {
 	}
 
 	if token == "(" {
-		elements := make([]Value, 0)
+		elements := make([]base.Value, 0)
 		for {
 			if next, _ := ts.Peek(); next == ")" {
 				ts.Pop() // dump )
-				return Sexpr(elements)
+				return base.Sexpr(elements)
 			} else {
 				v := Parse(ts)
 				elements = append(elements, v)
@@ -174,9 +82,9 @@ func Parse(ts TokenStream) Value {
 	val := parseAtom(token)
 
 	switch val := val.(type) {
-	case Symbol:
+	case base.Symbol:
 		if string(val) == "'" {
-			return Sexpr([]Value{Symbol("quote"), Parse(ts)})
+			return base.Sexpr([]base.Value{base.Symbol("quote"), Parse(ts)})
 		}
 	default:
 		return val
@@ -211,12 +119,12 @@ func NewTokenStream(tokens ...string) TokenStream {
 }
 
 // The reader function to use when you want to read series of s-expressions in
-// a string into Value data structures.
-func Read(s string) []Value {
+// a string into base.Value data structures.
+func Read(s string) []base.Value {
 	tokens := tokenize(s)
 	ts := NewTokenStream(tokens...)
 
-	vals := make([]Value, 0)
+	vals := make([]base.Value, 0)
 	for {
 		if _, err := ts.Peek(); err != nil {
 			break // out of tokens

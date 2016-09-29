@@ -27,6 +27,10 @@ func (f builtin) Name() string {
 	return f.name
 }
 
+func (f builtin) IsMacro() bool {
+	return false
+}
+
 func (f builtin) Invoke(context *context, args []Value) Value {
 	return f.f(evalAll(context, args))
 }

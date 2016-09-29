@@ -11,6 +11,7 @@ type fn struct {
 	args    []Symbol
 	exprs   []Value
 	context context
+	isMacro bool
 }
 
 type recur []Value
@@ -133,6 +134,24 @@ func special_def(context *context, vals []Value) Value {
 	}
 
 	return Nil{}
+}
+
+func special_defmacro(context *context, vals []Value) Value {
+
+	if len(vals) < 2 {
+		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
+	}
+
+	params := requireSexpr(vals[0], "expected args in the form of a list")
+
+	names := make([]Symbol, 0, len(params))
+	for i := range params {
+		name := requireSymbol(params[i], "arguments to functions must be symbols")
+		names = append(names, name)
+	}
+
+	// intentionally copying the context here, that becomes part of the fn
+	return fn{args: names, exprs: vals[1:], context: *context}
 }
 
 func requireSymbol(v Value, msg string) Symbol {
@@ -365,6 +384,7 @@ func evalRest(context *context, v Sexpr) []Value {
 
 type IFn interface {
 	Name() string
+	IsMacro() bool
 	Invoke(context *context, args []Value) Value
 }
 
@@ -378,6 +398,10 @@ func evalAll(context *context, vals []Value) []Value {
 
 func (f fn) Name() string {
 	return f.name
+}
+
+func (f fn) IsMacro() bool {
+	return f.isMacro
 }
 
 func (f fn) Invoke(context *context, args []Value) Value {
@@ -394,6 +418,10 @@ func (f Keyword) Name() string {
 	return ":" + string(f)
 }
 
+func (f Keyword) IsMacro() bool {
+	return false
+}
+
 func (f Keyword) Invoke(context *context, args []Value) Value {
 	return special_keyword_call(context, f, evalAll(context, args))
 }
@@ -407,6 +435,10 @@ type special struct {
 
 func (f special) Name() string {
 	return f.name
+}
+
+func (f special) IsMacro() bool {
+	return false
 }
 
 func (f special) Invoke(context *context, args []Value) Value {
@@ -427,6 +459,8 @@ func getIFn(context *context, v Value) IFn {
 		switch first { // special functions
 		case "def":
 			return makeSpecial("def", special_def)
+		case "defmacro":
+			return makeSpecial("defmacro", special_defmacro)
 		case "let":
 			return makeSpecial("let", special_let)
 		case "if":
@@ -474,14 +508,21 @@ func eval(context *context, v Value) Value {
 		}
 
 		first := v[0]
+		rest := v[1:]
+
 		if sexpr, ok := first.(Sexpr); ok {
 			resolved := make([]Value, 0)
 			resolved = append(resolved, eval(context, sexpr))
-			resolved = append(resolved, v[1:]...)
+			resolved = append(resolved, rest...)
 			return eval(context, Sexpr(resolved))
 		} else {
 			f := getIFn(context, first)
-			result = f.Invoke(context, v[1:])
+			if f.IsMacro() {
+				expanded := f.Invoke(context, rest)
+				result = eval(context, expanded)
+			} else {
+				result = f.Invoke(context, rest)
+			}
 		}
 
 	case Symbol:

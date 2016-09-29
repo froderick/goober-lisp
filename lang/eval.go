@@ -222,6 +222,10 @@ func special_if(context *context, vals []base.Value) base.Value {
 	}
 }
 
+type IFn interface {
+	invoke(name string, context *context, args []base.Value) base.Value
+}
+
 func special_fn(context *context, vals []base.Value) fn {
 
 	if len(vals) < 2 {
@@ -288,7 +292,7 @@ func special_keyword_call(context *context, k base.Keyword, args []base.Value) b
 		k,
 	})
 
-	return eval(context, replacement)
+	return evalSexpr(context, replacement)
 }
 
 func special_do(context *context, vals []base.Value) base.Value {
@@ -322,10 +326,6 @@ func evalRest(context *context, v base.Sexpr) []base.Value {
 		rest = append(rest, evaluated)
 	}
 	return rest
-}
-
-type IFn interface {
-	apply(name string, context *context, args []base.Value) base.Value
 }
 
 func evalSexpr(context *context, v base.Sexpr) base.Value {

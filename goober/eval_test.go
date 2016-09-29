@@ -64,7 +64,9 @@ var tests = []testPair{
 	testPair{
 		input: "(fn (a) (+ 1 2) (+ a 10))",
 		expected: fn{
-			args: []Symbol{Symbol("a")},
+			args: argsInfo{
+				args: []Symbol{Symbol("a")},
+			},
 			exprs: sexpr(
 				sexpr(Symbol("+"), Int(1), Int(2)),
 				sexpr(Symbol("+"), Symbol("a"), Int(10)),

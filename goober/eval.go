@@ -8,7 +8,7 @@ import "strings"
 
 type fn struct {
 	name    string
-	args    []Symbol
+	args    argsInfo
 	exprs   []Value
 	context context
 	isMacro bool
@@ -22,9 +22,12 @@ func (v fn) truthy() bool {
 
 func (v fn) prn() string {
 
-	args := make([]string, 0, len(v.args))
-	for _, arg := range v.args {
+	args := make([]string, 0, len(v.args.args)+2)
+	for _, arg := range v.args.args {
 		args = append(args, arg.prn())
+	}
+	if v.args.useRest {
+		args = append(args, "&", string(v.args.rest))
 	}
 
 	exprs := make([]string, 0, len(v.exprs))
@@ -117,42 +120,7 @@ func (c context) get(name Symbol) Value {
 	panic("cannot find a binding or var with this symbol name: " + name)
 }
 
-// This function is special because it acts like a macro,
-// it operates on the raw values haneded to it from the
-// reader.
-func special_def(context *context, vals []Value) Value {
-
-	if len(vals) != 2 {
-		panic(fmt.Sprintf("def takes only 2 parameters: %v", vals))
-	}
-
-	switch varname := vals[0].(type) {
-	case Symbol:
-		context.ns.def(string(varname), eval(context, vals[1]))
-	default:
-		panic(fmt.Sprintf("vars can only be named by symbols: %v", varname))
-	}
-
-	return Nil{}
-}
-
-func special_defmacro(context *context, vals []Value) Value {
-
-	if len(vals) < 2 {
-		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
-	}
-
-	params := requireSexpr(vals[0], "expected args in the form of a list")
-
-	names := make([]Symbol, 0, len(params))
-	for i := range params {
-		name := requireSymbol(params[i], "arguments to functions must be symbols")
-		names = append(names, name)
-	}
-
-	// intentionally copying the context here, that becomes part of the fn
-	return fn{args: names, exprs: vals[1:], context: *context}
-}
+// type casting utilities
 
 func requireSymbol(v Value, msg string) Symbol {
 	switch x := v.(type) {
@@ -206,6 +174,25 @@ func requireFn(v Value, msg string) fn {
 	default:
 		panic(fmt.Sprintf(msg+": %v", v))
 	}
+}
+
+// This function is special because it acts like a macro,
+// it operates on the raw values haneded to it from the
+// reader.
+func special_def(context *context, vals []Value) Value {
+
+	if len(vals) != 2 {
+		panic(fmt.Sprintf("def takes only 2 parameters: %v", vals))
+	}
+
+	switch varname := vals[0].(type) {
+	case Symbol:
+		context.ns.def(string(varname), eval(context, vals[1]))
+	default:
+		panic(fmt.Sprintf("vars can only be named by symbols: %v", varname))
+	}
+
+	return Nil{}
 }
 
 func special_let(context *context, vals []Value) Value {
@@ -276,36 +263,84 @@ func special_if(context *context, vals []Value) Value {
 	}
 }
 
+type argsInfo struct {
+	args    []Symbol
+	useRest bool
+	rest    Symbol
+}
+
+func getArgs(args Value) argsInfo {
+
+	params := requireSexpr(args, "expected args in the form of a list")
+	result := argsInfo{}
+
+	result.args = make([]Symbol, 0, len(params))
+	for i := range params {
+		name := requireSymbol(params[i], "arguments to functions must be symbols")
+
+		if name == Symbol("&") {
+			result.useRest = true
+			continue
+		}
+
+		if !result.useRest {
+			result.args = append(result.args, name)
+		} else {
+			result.rest = name
+		}
+	}
+
+	return result
+}
+
 func special_fn(context *context, vals []Value) Value {
 
 	if len(vals) < 2 {
 		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
 	}
 
-	params := requireSexpr(vals[0], "expected args in the form of a list")
+	// intentionally copying the context here, that becomes part of the fn
+	return fn{args: getArgs(vals[0]), exprs: vals[1:], context: *context}
+}
 
-	names := make([]Symbol, 0, len(params))
-	for i := range params {
-		name := requireSymbol(params[i], "arguments to functions must be symbols")
-		names = append(names, name)
+// TODO: rename args.args to args.required
+
+func packageArgs(name string, fn *fn, supplied []Value) ([]Value, []Value) { // take list of args, handle var-args
+
+	if len(supplied) < len(fn.args.args) {
+		if fn.args.useRest {
+			panic(fmt.Sprintf("%v takes at least %v parameters: called %v with args %v", name, len(fn.args.args), fn, supplied))
+		} else {
+			panic(fmt.Sprintf("%v takes %v parameters: called %v with args %v", name, len(fn.args.args), fn, supplied))
+		}
 	}
 
-	// intentionally copying the context here, that becomes part of the fn
-	return fn{args: names, exprs: vals[1:], context: *context}
+	if len(supplied) > len(fn.args.args) && !fn.args.useRest {
+		panic(fmt.Sprintf("%v takes %v parameters: called %v with args %v", name, len(fn.args.args), fn, supplied))
+	}
+
+	declared := supplied[0:len(fn.args.args)]
+	rest := supplied[len(fn.args.args):]
+
+	return declared, rest
 }
 
 func special_fn_call_inner(name string, fn *fn, context *context, vals []Value) Value {
 
 	//fmt.Printf("calling %v with args %v\n", fn, Sexpr(vals))
 
-	if len(vals) < len(fn.args) {
-		panic(fmt.Sprintf("%v takes %v parameters: called %v with args %v", name, len(fn.args), fn, vals))
+	declared, rest := packageArgs(name, fn, vals)
+
+	for i, bindingName := range fn.args.args {
+		bindingValue := declared[i]
+		fn.context.push(bindingName, bindingValue)
+		defer fn.context.pop()
 	}
 
-	for i, bindingname := range fn.args {
-		bindingExpr := vals[i]
-		bindingValue := bindingExpr
-		fn.context.push(bindingname, bindingValue)
+	if fn.args.useRest {
+		bindingName := fn.args.rest
+		bindingValue := Sexpr(rest)
+		fn.context.push(bindingName, bindingValue)
 		defer fn.context.pop()
 	}
 
@@ -331,6 +366,24 @@ func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 		}
 	}
 
+}
+
+func special_defmacro(context *context, vals []Value) Value {
+
+	if len(vals) < 2 {
+		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
+	}
+
+	params := requireSexpr(vals[0], "expected args in the form of a list")
+
+	names := make([]Symbol, 0, len(params))
+	for i := range params {
+		name := requireSymbol(params[i], "arguments to functions must be symbols")
+		names = append(names, name)
+	}
+
+	// intentionally copying the context here, that becomes part of the fn
+	return fn{exprs: vals[1:], context: *context}
 }
 
 func special_keyword_call(context *context, k Keyword, args []Value) Value {

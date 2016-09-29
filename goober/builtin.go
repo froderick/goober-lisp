@@ -4,7 +4,12 @@ import "math"
 import "fmt"
 import "strings"
 
-type builtin func([]Value) Value
+type builtin_f func([]Value) Value
+
+type builtin struct {
+	name string
+	f    builtin_f
+}
 
 func (v builtin) truthy() bool {
 	return true
@@ -18,23 +23,36 @@ func (v builtin) String() string {
 	return v.prn()
 }
 
-var builtinMap = map[string]builtin{
-	"list":     builtin_list,
-	"first":    builtin_first,
-	"rest":     builtin_rest,
-	"cons":     builtin_cons,
-	"+":        builtin_plus,
-	"=":        builtin_eq,
-	">":        builtin_gt,
-	">=":       builtin_gteq,
-	"<":        builtin_lt,
-	"<=":       builtin_lteq,
-	"hash-map": builtin_hashmap,
-	"get":      builtin_get,
-	"put":      builtin_put,
-	"seq":      builtin_seq,
-	"println":  builtin_println,
-	"count":    builtin_count,
+func (f builtin) Name() string {
+	return f.name
+}
+
+func (f builtin) Invoke(context *context, args []Value) Value {
+	return f.f(evalAll(context, args))
+}
+
+func makeBuiltin(name string, f func([]Value) Value) IFn {
+	return builtin{name: name, f: builtin_f(f)}
+}
+
+// TODO: would be nice to avoid this duplication
+var builtinMap = map[string]IFn{
+	"list":     makeBuiltin("list", builtin_list),
+	"first":    makeBuiltin("first", builtin_first),
+	"rest":     makeBuiltin("rest", builtin_rest),
+	"cons":     makeBuiltin("cons", builtin_cons),
+	"+":        makeBuiltin("+", builtin_plus),
+	"=":        makeBuiltin("=", builtin_eq),
+	">":        makeBuiltin(">", builtin_gt),
+	">=":       makeBuiltin(">=", builtin_gteq),
+	"<":        makeBuiltin("<", builtin_lt),
+	"<=":       makeBuiltin("<=", builtin_lteq),
+	"hash-map": makeBuiltin("hash-map", builtin_hashmap),
+	"get":      makeBuiltin("get", builtin_get),
+	"put":      makeBuiltin("put", builtin_put),
+	"seq":      makeBuiltin("seq", builtin_seq),
+	"println":  makeBuiltin("println", builtin_println),
+	"count":    makeBuiltin("count", builtin_count),
 }
 
 func builtin_list(vals []Value) Value {

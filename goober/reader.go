@@ -125,6 +125,9 @@ func parseAtom(s string) Value {
 	if "false" == s {
 		return Boolean(false)
 	}
+	if "nil" == s {
+		return Nil{}
+	}
 
 	if ival, err := strconv.Atoi(s); err == nil {
 		return Int(ival)

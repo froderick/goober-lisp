@@ -483,9 +483,6 @@ func eval(context *context, v Value) Value {
 		}
 
 	case Symbol:
-		if "nil" == string(v) {
-			return Nil{}
-		}
 		result = context.get(v)
 
 	default:

@@ -456,6 +456,8 @@ func getIFn(context *context, v Value) IFn {
 	}
 }
 
+// TODO: implement stack traces in reader and eval
+
 // Evaluates a Value data structure as code.
 func eval(context *context, v Value) Value {
 

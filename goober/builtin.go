@@ -99,7 +99,16 @@ func builtin_cons(vals []Value) Value {
 	}
 
 	x := vals[0]
-	list := requireSexpr(vals[1], "second argument must be a list")
+
+	var list Sexpr
+	switch y := vals[1].(type) {
+	case Sexpr:
+		list = y
+	case Nil:
+		list = Sexpr([]Value{})
+	default:
+		panic(fmt.Sprintf("second argument must be a list or nil: %v", y))
+	}
 
 	newList := make([]Value, 0, len(list)+1)
 	newList = append(newList, x)

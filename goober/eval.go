@@ -303,6 +303,25 @@ func special_fn(context *context, vals []Value) Value {
 	return fn{args: getArgs(vals[0]), exprs: vals[1:], context: *context}
 }
 
+func special_defmacro(context *context, vals []Value) Value {
+
+	if len(vals) < 2 {
+		panic(fmt.Sprintf("defmacro takes 2 parameters: %v", vals))
+	}
+
+	// intentionally copying the context here, that becomes part of the fn
+	f := fn{args: getArgs(vals[1]), exprs: vals[2:], context: *context, isMacro: true}
+
+	switch varname := vals[0].(type) {
+	case Symbol:
+		context.ns.def(string(varname), f)
+	default:
+		panic(fmt.Sprintf("vars can only be named by symbols: %v", varname))
+	}
+
+	return Nil{}
+}
+
 func packageArgs(name string, fn *fn, supplied []Value) ([]Value, []Value) { // take list of args, handle var-args
 
 	if len(supplied) < len(fn.args.declared) {
@@ -371,24 +390,6 @@ func special_fn_call(name string, fn fn, context *context, vals []Value) Value {
 		}
 	}
 
-}
-
-func special_defmacro(context *context, vals []Value) Value {
-
-	if len(vals) < 2 {
-		panic(fmt.Sprintf("fn takes at least 2 parameters: %v", vals))
-	}
-
-	params := requireSexpr(vals[0], "expected args in the form of a list")
-
-	names := make([]Symbol, 0, len(params))
-	for i := range params {
-		name := requireSymbol(params[i], "arguments to functions must be symbols")
-		names = append(names, name)
-	}
-
-	// intentionally copying the context here, that becomes part of the fn
-	return fn{exprs: vals[1:], context: *context}
 }
 
 func special_keyword_call(context *context, k Keyword, args []Value) Value {
@@ -469,7 +470,12 @@ func (f fn) Invoke(context *context, args []Value) Value {
 	} else {
 		name = f.name
 	}
-	return special_fn_call(name, f, context, evalAll(context, args))
+
+	if !f.isMacro {
+		args = evalAll(context, args)
+	}
+
+	return special_fn_call(name, f, context, args)
 }
 
 func (f Keyword) Name() string {
@@ -548,6 +554,7 @@ func getIFn(context *context, v Value) IFn {
 	}
 }
 
+// TODO: implement debug message mode
 // TODO: implement stack traces in reader and eval
 
 // Evaluates a Value data structure as code.
@@ -577,6 +584,7 @@ func eval(context *context, v Value) Value {
 			f := getIFn(context, first)
 			if f.IsMacro() {
 				expanded := f.Invoke(context, rest)
+				//fmt.Printf("expanded %v to %v\n", f, expanded)
 				result = eval(context, expanded)
 			} else {
 				result = f.Invoke(context, rest)

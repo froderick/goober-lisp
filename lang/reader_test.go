@@ -1,8 +1,9 @@
-package goober
+package lang
 
 import "testing"
 import "fmt"
 import "reflect"
+import "goober-lisp/base"
 
 func assertEqual(t *testing.T, a interface{}, b interface{}) {
 	if !reflect.DeepEqual(a, b) {
@@ -11,21 +12,21 @@ func assertEqual(t *testing.T, a interface{}, b interface{}) {
 	}
 }
 
-func sexpr(v ...Value) Sexpr {
-	return Sexpr(v)
+func sexpr(v ...base.Value) base.Sexpr {
+	return base.Sexpr(v)
 }
 
-func sym(s string) Symbol {
-	return Symbol(s)
+func sym(s string) base.Symbol {
+	return base.Symbol(s)
 }
 
-func readOne(s string) Value {
+func readOne(s string) base.Value {
 	return Read(s)[0]
 }
 
 func TestReadBoolean(t *testing.T) {
-	assertEqual(t, readOne("true"), Boolean(true))
-	assertEqual(t, readOne("false"), Boolean(false))
+	assertEqual(t, readOne("true"), base.Boolean(true))
+	assertEqual(t, readOne("false"), base.Boolean(false))
 }
 
 func TestReadSymbol(t *testing.T) {
@@ -33,16 +34,16 @@ func TestReadSymbol(t *testing.T) {
 }
 
 func TestReadInt(t *testing.T) {
-	assertEqual(t, readOne("100"), Int(100))
+	assertEqual(t, readOne("100"), base.Int(100))
 }
 
 func TestReadStr(t *testing.T) {
-	assertEqual(t, readOne("\"A\""), Str("A"))
+	assertEqual(t, readOne("\"A\""), base.Str("A"))
 }
 
 func TestReadSexpr(t *testing.T) {
-	assertEqual(t, readOne("(+ 1 2 3)"), sexpr(sym("+"), Int(1), Int(2), Int(3))) // basic
-	assertEqual(t, readOne("(x (y))"), sexpr(sym("x"), sexpr(sym("y"))))          // nesting
+	assertEqual(t, readOne("(+ 1 2 3)"), sexpr(sym("+"), base.Int(1), base.Int(2), base.Int(3))) // basic
+	assertEqual(t, readOne("(x (y))"), sexpr(sym("x"), sexpr(sym("y"))))                         // nesting
 }
 
 func TestReadQuote(t *testing.T) {

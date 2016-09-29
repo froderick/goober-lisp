@@ -1,4 +1,4 @@
-package goober
+package lang
 
 import "io/ioutil"
 import "fmt"

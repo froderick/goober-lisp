@@ -4,7 +4,7 @@ import "fmt"
 import "os"
 import "bufio"
 import "strings"
-import "goober-lisp/goober"
+import "goober-lisp/lang"
 import "runtime/debug"
 import "io/ioutil"
 
@@ -13,7 +13,7 @@ func isEmpty(s string) bool {
 	return len(t) == 0
 }
 
-func handle(ns *goober.Ns, input string) {
+func handle(ns *lang.Ns, input string) {
 
 	// not supposed to panic across packages, but too bad
 	defer func() {
@@ -23,14 +23,14 @@ func handle(ns *goober.Ns, input string) {
 	}()
 
 	if !isEmpty(input) {
-		for _, val := range goober.Read(input) {
-			fmt.Printf("%v\n", goober.Eval(ns, val))
+		for _, val := range lang.Read(input) {
+			fmt.Printf("%v\n", lang.Eval(ns, val))
 		}
 	}
 }
 
 func main() {
-	ns := goober.DefaultNs()
+	ns := lang.DefaultNs()
 
 	stat, _ := os.Stdin.Stat()
 
@@ -50,8 +50,8 @@ func main() {
 		}
 		done := strings.Join(filtered, "\n")
 
-		for _, val := range goober.Read(done) {
-			goober.Eval(ns, val)
+		for _, val := range lang.Read(done) {
+			lang.Eval(ns, val)
 		}
 
 	} else if (stat.Mode() & os.ModeCharDevice) == 0 { // handle piped lisp script
@@ -62,8 +62,8 @@ func main() {
 			panic(fmt.Sprintf("error reading input", err))
 		}
 
-		for _, val := range goober.Read(string(data)) {
-			goober.Eval(ns, val)
+		for _, val := range lang.Read(string(data)) {
+			lang.Eval(ns, val)
 		}
 	} else { // fall back to repl
 		for {

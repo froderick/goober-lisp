@@ -16,7 +16,7 @@ func (v builtin) truthy() bool {
 }
 
 func (v builtin) prn() string {
-	return "<builtin>"
+	return v.name
 }
 
 func (v builtin) String() string {
@@ -46,6 +46,7 @@ var builtinMap = map[string]IFn{
 	"rest":     makeBuiltin("rest", builtin_rest),
 	"cons":     makeBuiltin("cons", builtin_cons),
 	"+":        makeBuiltin("+", builtin_plus),
+	"-":        makeBuiltin("-", builtin_minus),
 	"=":        makeBuiltin("=", builtin_eq),
 	">":        makeBuiltin(">", builtin_gt),
 	">=":       makeBuiltin(">=", builtin_gteq),
@@ -243,6 +244,20 @@ func builtin_plus(vals []Value) Value {
 	for i := range vals {
 		val := requireInt(vals[i], "arguments to '+' must be numbers")
 		base = base + int(val)
+	}
+	return Int(base)
+}
+
+func builtin_minus(vals []Value) Value {
+
+	if len(vals) == 0 {
+		panic(fmt.Sprintf("- takes 1 parameter: %v", vals))
+	}
+
+	base := requireInt(vals[0], "arguments to '-' must be numbers")
+	for _, i := range vals[1:] {
+		val := requireInt(i, "arguments to '-' must be numbers")
+		base = base - val
 	}
 	return Int(base)
 }

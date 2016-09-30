@@ -438,8 +438,7 @@ func evalRest(context *context, v Sexpr) []Value {
 	return rest
 }
 
-// TODO NEXT: macros?
-// TODO: sort out IFn
+// TODO: macro syntax quotes
 
 type IFn interface {
 	Name() string

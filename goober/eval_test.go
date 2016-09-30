@@ -32,36 +32,32 @@ type testPair struct {
 	xform    xform
 }
 
-func pair(input string, expected Value) testPair {
-	return testPair{input: input, expected: expected}
-}
-
 var tests = []testPair{
 
 	// special functions (macros)
 
-	testPair{
+	{
 		input: `(let (def-result (def x 100))
 	              (list def-result x))`,
 		expected: sexpr(Nil{}, Int(100)),
 	},
 
-	testPair{input: "(let (a 1 b 2) a)", expected: Int(1)},
+	{input: "(let (a 1 b 2) a)", expected: Int(1)},
 
-	testPair{input: "(if nil 'y 'n)", expected: Symbol("n")},
-	testPair{input: "(if true 'y 'n)", expected: Symbol("y")},
-	testPair{input: "(if false 'y 'n)", expected: Symbol("n")},
-	testPair{input: "(if 'x 'y 'n)", expected: Symbol("y")},
-	testPair{input: "(if -1 'y 'n)", expected: Symbol("y")},
-	testPair{input: "(if 0 'y 'n)", expected: Symbol("n")},
-	testPair{input: "(if 1 'y 'n)", expected: Symbol("y")},
-	testPair{input: "(if \"\" 'y 'n)", expected: Symbol("n")},
-	//testPair{input: "(if \" \" 'y 'n)", expected: Symbol("y")}, // TODO: this will not work because our lexer sucks
-	testPair{input: "(if \"test\" 'y 'n)", expected: Symbol("y")},
-	testPair{input: "(if () 'y 'n)", expected: Symbol("y")},
-	testPair{input: "(if '(1) 'y 'n)", expected: Symbol("y")},
+	{input: "(if nil 'y 'n)", expected: Symbol("n")},
+	{input: "(if true 'y 'n)", expected: Symbol("y")},
+	{input: "(if false 'y 'n)", expected: Symbol("n")},
+	{input: "(if 'x 'y 'n)", expected: Symbol("y")},
+	{input: "(if -1 'y 'n)", expected: Symbol("y")},
+	{input: "(if 0 'y 'n)", expected: Symbol("n")},
+	{input: "(if 1 'y 'n)", expected: Symbol("y")},
+	{input: "(if \"\" 'y 'n)", expected: Symbol("n")},
+	//{input: "(if \" \" 'y 'n)", expected: Symbol("y")}, // TODO: this will not work because our lexer sucks
+	{input: "(if \"test\" 'y 'n)", expected: Symbol("y")},
+	{input: "(if () 'y 'n)", expected: Symbol("y")},
+	{input: "(if '(1) 'y 'n)", expected: Symbol("y")},
 
-	testPair{
+	{
 		input: "(fn (a) (+ 1 2) (+ a 10))",
 		expected: fn{
 			args: argsInfo{
@@ -78,29 +74,29 @@ var tests = []testPair{
 			return fn
 		},
 	},
-	testPair{input: "((fn (a) (+ 1 2) (+ a 10)) 5)", expected: Int(15)},
+	{input: "((fn (a) (+ 1 2) (+ a 10)) 5)", expected: Int(15)},
 
-	testPair{input: "'y", expected: Symbol("y")},
-	testPair{input: "'(1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
-	testPair{input: "(quote (1 2 3))", expected: sexpr(Int(1), Int(2), Int(3))},
-	testPair{input: "(not 'x)", expected: Boolean(false)},
+	{input: "'y", expected: Symbol("y")},
+	{input: "'(1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
+	{input: "(quote (1 2 3))", expected: sexpr(Int(1), Int(2), Int(3))},
+	{input: "(not 'x)", expected: Boolean(false)},
 
-	testPair{input: "(do (+ 1 2 3) 5)", expected: Int(5)},
+	{input: "(do (+ 1 2 3) 5)", expected: Int(5)},
 
 	// builtin functions (not macros)
 
-	testPair{input: "(list 1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
-	testPair{input: "(first '(1 2 3))", expected: Int(1)},
-	testPair{input: "(rest '(1 2 3))", expected: sexpr(Int(2), Int(3))},
-	testPair{input: "(cons 100 '())", expected: sexpr(Int(100))},
-	testPair{input: "(+ 1 2 3)", expected: Int(6)},
+	{input: "(list 1 2 3)", expected: sexpr(Int(1), Int(2), Int(3))},
+	{input: "(first '(1 2 3))", expected: Int(1)},
+	{input: "(rest '(1 2 3))", expected: sexpr(Int(2), Int(3))},
+	{input: "(cons 100 '())", expected: sexpr(Int(100))},
+	{input: "(+ 1 2 3)", expected: Int(6)},
 
 	// keywords as basic functions
 
-	testPair{input: "(:a (hash-map :a :B))", expected: Keyword("B")},
+	{input: "(:a (hash-map :a :B))", expected: Keyword("B")},
 
 	// keywords as higher-order functions
-	testPair{
+	{
 		input:    "(map :a (list (hash-map :a \"ONE\") (hash-map :a \"TWO\")))",
 		expected: sexpr(Str("ONE"), Str("TWO")),
 	},

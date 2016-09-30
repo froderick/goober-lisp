@@ -57,6 +57,7 @@ var builtinMap = map[string]IFn{
 	"seq":      makeBuiltin("seq", builtin_seq),
 	"println":  makeBuiltin("println", builtin_println),
 	"count":    makeBuiltin("count", builtin_count),
+	"str":      makeBuiltin("str", builtin_str),
 }
 
 func builtin_list(vals []Value) Value {
@@ -326,4 +327,13 @@ func builtin_gteq(vals []Value) Value {
 		}
 	}
 	return Boolean(true)
+}
+
+func builtin_str(vals []Value) Value {
+
+	strs := make([]string, 0)
+	for _, i := range vals {
+		strs = append(strs, i.prn())
+	}
+	return Str(strings.Join(strs, ""))
 }

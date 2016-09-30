@@ -43,7 +43,9 @@ func makeBuiltin(name string, f func([]Value) Value) IFn {
 var builtinMap = map[string]IFn{
 	"list":     makeBuiltin("list", builtin_list),
 	"first":    makeBuiltin("first", builtin_first),
+	"last":     makeBuiltin("last", builtin_last),
 	"rest":     makeBuiltin("rest", builtin_rest),
+	"nth":      makeBuiltin("nth", builtin_nth),
 	"cons":     makeBuiltin("cons", builtin_cons),
 	"+":        makeBuiltin("+", builtin_plus),
 	"-":        makeBuiltin("-", builtin_minus),
@@ -79,6 +81,20 @@ func builtin_first(vals []Value) Value {
 	}
 }
 
+func builtin_last(vals []Value) Value {
+
+	if len(vals) != 1 {
+		panic(fmt.Sprintf("first takes only 1 parameter: %v", vals))
+	}
+
+	seq := seq(vals[0])
+	if len(seq) == 0 {
+		return Nil{}
+	} else {
+		return seq[len(seq)-1]
+	}
+}
+
 func builtin_rest(vals []Value) Value {
 
 	if len(vals) != 1 {
@@ -92,6 +108,18 @@ func builtin_rest(vals []Value) Value {
 	} else {
 		return Sexpr(list[1:]) // this will probably bite me in the ass
 	}
+}
+
+func builtin_nth(vals []Value) Value {
+
+	if len(vals) != 2 {
+		panic(fmt.Sprintf("nth takes only 2 parameters: %v", vals))
+	}
+
+	list := requireSexpr(vals[0], "nth takes a list")
+	n := requireInt(vals[1], "nth takes an int")
+
+	return list[n]
 }
 
 func builtin_cons(vals []Value) Value {

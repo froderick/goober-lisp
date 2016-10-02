@@ -49,3 +49,8 @@
                   (recur (cons (+ (first x) (second x)) x) n)
                   (reverse x))))
     (fib-n '(1 0) n)))
+
+(defn describe-person (name & other-stuff)
+  (println "name:" name)
+  (println "other-stuff:" other-stuff))
+

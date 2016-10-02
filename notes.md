@@ -33,5 +33,17 @@ Go: Early Observations
 * First-class functions, but not a functional language
 * 
 
+Interpreter Outcome
+-------------------
 
+* Fib Example
+* Basic Macros (when)
+* Some Collections Support (map)
+* Immutable Data Structures
+
+More to Come
+------------
+
+* Plenty of Hackers material here
+* Stay tuned
 

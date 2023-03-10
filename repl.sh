@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rlwrap -r -m '\\"' -b "(){}[],^%3@\\\";:'" go run cmd/repl/main.go
+LISP_PATH=. go run goober-lisp/repl

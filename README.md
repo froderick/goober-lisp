@@ -6,7 +6,7 @@ by writing a simple lisp interpreter.
 Please don't write anything useful in this, it will probably take your hand
 off. But I highly recommend Golang, and Lisp!
 
-# getting started
+## getting started
 
 You can run the following from the root of the repo to get the repl running.
 

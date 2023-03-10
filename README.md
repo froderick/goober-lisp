@@ -1,49 +1,31 @@
-Golang and Lisp
-===============
+# goober-lisp
 
-Down the Rabbit Hole
+This is a program I wrote during a hackathon with the goal of learning Golang
+by writing a simple lisp interpreter.
 
-Goals
------
-* Learn Go
-* Learn more about functional language design
+Please don't write anything useful in this, it will probably take your hand
+off. But I highly recommend Golang, and Lisp!
 
-Why Learn Go?
--------------
-* [Rapid Adoption](https://github.com/golang/go/wiki/GoUsers) in the backend server space
-* Bleeding edge ops tools we use are being written in it, notably
-    - Docker
-    - Terraform
-* Toolset Enrichment
+# getting started
 
-Why Write a Lisp Interpreter?
------------------------------
-* Avoid getting bogged down in lexing, parsing, compilation
-* Focus on interesting language features:
-    - first class functions
-    - closures
-    - tail call optimization
-    - macros
-* REPL-first, easy to explore and iterate
+You can run the following from the root of the repo to get the repl running.
 
-Go: Early Observations
-----------------------
+```
+$ ./repl.sh
+```
 
-* Transparency over Abstraction
-* First-class functions, but not a functional language
-* 
+To get a sense of what the simple language is capable of, take a look at the [core.el](core.el) where the builtins of the language are defined.
 
-Interpreter Outcome
--------------------
+Here's the fibonacci sequence:
 
-* Fib Example
-* Basic Macros (when)
-* Some Collections Support (map)
-* Immutable Data Structures
+```lisp
+user> (defn fib (n)
+  (let (fib-n (fn (x n)
+                (if (< (count x) n) 
+                  (recur (cons (+ (first x) (second x)) x) n)
+                  (reverse x))))
+    (fib-n '(1 0) n)))
 
-More to Come
-------------
-
-* Plenty of Hackers material here
-* Stay tuned
-
+user> (fib 10)
+(0 1 1 2 3 5 8 13 21 34)
+```

@@ -35,7 +35,6 @@ Go: Early Observations
 
 * Transparency over Abstraction
 * First-class functions, but not a functional language
-* 
 
 Interpreter Outcome
 -------------------
